@@ -97,7 +97,7 @@ On success replies with the raw bytes of the filter.
 Installation 
 ------------
 
-1. Download a precompiled binary from the Release tab of this repo or compile with `make all` (linux and osx supported)
+1. Download a precompiled binary from the Release tab (or [click here](https://github.com/kristoff-it/redis-cuckoofilter/releases/download/0.1/redis-cuckoofilter-releases.zip)) of this repo or compile with `make all` (linux and osx supported)
 
 2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis installation
 
