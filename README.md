@@ -42,8 +42,7 @@ send {hash, fingerprint} of the original item.
 - You need to push trough the cable a constant amount of data per item instead of N bytes.
 - **The hash function can be decided by you, meaning that this module is hashing-function agnostic**.
 
-The last point is the most important one. It allows you to both be more flexible on the client-side and lets you choose the {hashing func, fingerprinting func} couple that best suits your needs.
-Ever tried to 
+The last point is the most important one. It allows you to both be more flexible on the client-side and lets you choose the {hashing func, fingerprinting func} couple that best suits your needs. 
 
 
 
@@ -59,7 +58,7 @@ Current API
 - `bucketsize`: number of fingerprints per bucket, one of {2, 4}
 
 
-		Bucketsize of 2 offers sligltly better performance when reading and lower error-rate, 4 offers better fill-rate (i.e. lower chance of encountering the "too full" error). Either choice will not change the size of the filter, it's just a matter of how the space will be used.
+		Bucketsize of 2 offers sligltly better performance and lower error-rate, 4 offers better fill-rate (i.e. lower chance of encountering the "too full" error). Either choice will not change the size of the filter, it's just a matter of how the space will be used. 
 		
 		In general it's a good idea to size the filter so that it never gets fuller than ~60% as it both lowers the chance of overcrowding some buckets and prevents the insertion time from growing too much (cf. the linked paper for more information). That said, 2-bucketsize filter can be filled up to ~95% and 4-bucketsize filters can be filled up to ~98% (cf. the linked paper).
 	
@@ -69,10 +68,10 @@ On success replies: `OK`
 
 #### Add an item:
 `CF.ADD key hash fp`
-- `hash`: unsigned int64 digest of the original item using a hashing function of your choice
+- `hash`: int64 digest of the original item using a hashing function of your choice. Can also be unsigned.
 - `fp`: fingerprint of the original item: 1 byte encoded as 0 - 255
 
-Example: `CF.ADD test 1234567890 205`
+Example: `CF.ADD test -8965164415461427448 205`
 
 On success replies: `OK`
 
@@ -100,11 +99,11 @@ Installation
 
 1. Download a precompiled binary from the Release tab of this repo or compile with `make all` (linux and osx supported)
 
-2. Put the `.so` module in a folder readable by your Redis installation
+2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis installation
 
-3. To try out the module you can send `MODULE LOAD /path/to/mymodule.so` using redis-cli or a client of your choice
+3. To try out the module you can send `MODULE LOAD /path/to/redis-cuckoofilter.so` using redis-cli or a client of your choice
 
-4. Once you save on disk a key containing a Cuckoo filter you will need to add `loadmodule /path/to/mymodule.so` to your `redis.conf`, otherwise Redis will not load complaining that it doesn't know how to read some data from the `.rdb` file.
+4. Once you save on disk a key containing a Cuckoo filter you will need to add `loadmodule /path/to/redis-cuckoofilter.so` to your `redis.conf`, otherwise Redis will not load complaining that it doesn't know how to read some data from the `.rdb` file.
 
 
 
