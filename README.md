@@ -58,9 +58,9 @@ Current API
 - `bucketsize`: number of fingerprints per bucket, one of {2, 4}
 
 
-		Bucketsize of 2 offers sligltly better performance and lower error-rate, 4 offers better fill-rate (i.e. lower chance of encountering the "too full" error). Either choice will not change the size of the filter, it's just a matter of how the space will be used. 
+Bucketsize of 2 offers sligltly better performance and lower error-rate, 4 offers better fill-rate (i.e. lower chance of encountering the "too full" error). Either choice will not change the size of the filter, it's just a matter of how the space will be used. 
 		
-		In general it's a good idea to size the filter so that it never gets fuller than ~60% as it both lowers the chance of overcrowding some buckets and prevents the insertion time from growing too much (cf. the linked paper for more information). That said, 2-bucketsize filter can be filled up to ~95% and 4-bucketsize filters can be filled up to ~98% (cf. the linked paper).
+In general it's a good idea to size the filter so that it never gets fuller than ~60% as it both lowers the chance of overcrowding some buckets and prevents the insertion time from growing too much (cf. the linked paper for more information). That said, 2-bucketsize filter can be filled up to ~95% and 4-bucketsize filters can be filled up to ~98% (cf. the linked paper).
 	
 Example: `CF.INIT test 64K 2`
 
@@ -79,7 +79,7 @@ On success replies: `OK`
 #### Remove an item:
 `CF.REM key hash fp`
 
-	Please keep in mind that you are supposed to call this function only on items that have been inserted in the filter. Trying to delete an item that has never been inserted has a small chance of breaking your filter.
+Please keep in mind that you are supposed to call this function only on items that have been inserted in the filter. Trying to delete an item that has never been inserted has a small chance of breaking your filter.
 	
 Returns an error if the item you're trying to remove doesn't exist.
 
