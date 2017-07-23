@@ -25,6 +25,7 @@
 # Shared objects (inc. Windows DLLs)
 *.dll
 *.so
+*.xo
 *.so.*
 *.dylib
 
@@ -50,3 +51,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+
+*.rdb
+.python-version
