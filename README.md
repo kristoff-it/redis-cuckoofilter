@@ -46,6 +46,19 @@ The last point is the most important one. It allows you to both be more flexible
 
 
 
+Installation 
+------------
+
+1. Download a precompiled binary from the Release tab (or [click here](https://github.com/kristoff-it/redis-cuckoofilter/releases/download/0.1/redis-cuckoofilter-releases.zip)) of this repo or compile with `make all` (linux and osx supported)
+
+2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis installation
+
+3. To try out the module you can send `MODULE LOAD /path/to/redis-cuckoofilter.so` using redis-cli or a client of your choice
+
+4. Once you save on disk a key containing a Cuckoo filter you will need to add `loadmodule /path/to/redis-cuckoofilter.so` to your `redis.conf`, otherwise Redis will not load complaining that it doesn't know how to read some data from the `.rdb` file.
+
+
+
 Current API
 ----------
 
@@ -92,19 +105,6 @@ On success replies: `1` if the item seems to be present else `0`
 `CF.DUMP key`
 
 On success replies with the raw bytes of the filter.
-
-
-Installation 
-------------
-
-1. Download a precompiled binary from the Release tab (or [click here](https://github.com/kristoff-it/redis-cuckoofilter/releases/download/0.1/redis-cuckoofilter-releases.zip)) of this repo or compile with `make all` (linux and osx supported)
-
-2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis installation
-
-3. To try out the module you can send `MODULE LOAD /path/to/redis-cuckoofilter.so` using redis-cli or a client of your choice
-
-4. Once you save on disk a key containing a Cuckoo filter you will need to add `loadmodule /path/to/redis-cuckoofilter.so` to your `redis.conf`, otherwise Redis will not load complaining that it doesn't know how to read some data from the `.rdb` file.
-
 
 
 Planned Features
