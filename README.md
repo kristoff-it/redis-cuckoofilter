@@ -55,6 +55,9 @@ cases that might interest you or not. For example some work best for small data
 more collisions, while some others behave better than the rest on peculiar 
 platforms.
 
+[This blogpost](http://aras-p.info/blog/2016/08/09/More-Hash-Function-Tests/) 
+shows a few benchmarks of different hashing function families.
+
 Considering all of that, the choice of {hashing func, fingerprinting func} has 
 to be up to you.
 
@@ -84,7 +87,7 @@ Usage Example
 
 ```
 redis-cli> CF.INIT test 64K
-65536
+(integer) 65536
  
 redis-cli> CF.ADD test 5366164415461427448 97
 OK
