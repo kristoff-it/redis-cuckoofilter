@@ -7,9 +7,9 @@ BATCH_SIZE = 10_000
 correct_items = set()
 wrong_items = set()
 
-filterSize = "8M"
+filterSize = "64K"
 random.seed(123)
-while len(correct_items) < 5_000_000:
+while len(correct_items) < 62_000:
     correct_items.add(random.randint(1_000_000, 1_000_000_000))
 
 print("Good set constructed!")
@@ -61,7 +61,7 @@ for elem in tqdm(correct_items):
         pipe = r.pipeline()
 right += sum(pipe.execute())
 
-print("Recollection:",  (right/len(correct_items)) * 100, '%')
+print("Recollection (must be 100%):",  (right/len(correct_items)) * 100, '%')
 
 wrong = 0
 for elem in tqdm(wrong_items):
@@ -119,4 +119,40 @@ wrong -= sum(pipe.execute())
 
 print("Correctly forgotten (still subject to intrinsic false-positive):",  (wrong/len(deleted_items)) * 100, '%')
 
+i = 0
+pipe = r.pipeline()
+for elem in tqdm(deleted_items):
+    strNum = str(elem)
+    iD = ll(xxhash.xxh64(strNum).intdigest()).value
+    last8bits = (elem).to_bytes(8, byteorder='big')[-1]
+    if last8bits == 0:
+        last8bits += 1
+    command = ('cf.add', 'lol', iD, last8bits)
+    pipe.execute_command(*command)
+    i += 1
+    if i % BATCH_SIZE == 0:
+        pipe.execute()
+        pipe = r.pipeline()
+pipe.execute()
+
+print("Added the deleted items back in")
+
+right = 0
+pipe = r.pipeline()
+i = 0
+for elem in tqdm(correct_items):
+    strNum = str(elem)
+    iD = ll(xxhash.xxh64(strNum).intdigest()).value
+    last8bits = (elem).to_bytes(8, byteorder='big')[-1]
+    if last8bits == 0:
+        last8bits = 1
+    command = ('cf.check', 'lol', iD, last8bits)
+    pipe.execute_command(*command)
+    i += 1
+    if i % BATCH_SIZE == 0:
+        right += sum(pipe.execute())
+        pipe = r.pipeline()
+right += sum(pipe.execute())
+
+print("Recollection (must be 100%):",  (right/len(correct_items)) * 100, '%')
 

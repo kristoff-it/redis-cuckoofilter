@@ -45,22 +45,32 @@ clients send {hash, fingerprint} of the original item.
 - To perform well, Cuckoo filters rely on a good choice of fingerprint for each item and it should not be left to the library.
 - **The hash function can be decided by you, meaning that this module is hashing-function agnostic**.
 
-The last point is the most important one. It allows you to be more flexible in case you need to reason about item hashes across different clients potentially written in different languages. It's surprisingly difficult to find implementations of filters who's state can be shared between different languages and the first hurdle is that they use different(ly seeded) hashing functions. 
+The last point is the most important one. 
+It allows you to be more flexible in case you need to reason about item hashes 
+across different clients potentially written in different languages. 
 
-Additionally, different hashing function families specialize on different use cases that might interest you or not. For example some work best for small data (< 7 bytes), some the opposite. Some focus more on performance at the expense of more collisions, while some others behave better than the rest on peculiar platforms.
+Additionally, different hashing function families specialize on different use 
+cases that might interest you or not. For example some work best for small data 
+(< 7 bytes), some the opposite. Some focus more on performance at the expense of 
+more collisions, while some others behave better than the rest on peculiar 
+platforms.
 
-Considering all of that, the choice of {hashing func, fingerprinting func} has to be up to you.
+Considering all of that, the choice of {hashing func, fingerprinting func} has 
+to be up to you.
 
-*For the internal partial hashing that has to happen when reallocating a fingerprint server-side, this implementation uses FNV1a which is robust and fast for 1 byte inputs (the size of a fingerprint).*
+*For the internal partial hashing that has to happen when reallocating a 
+fingerprint server-side, this implementation uses FNV1a which is robust and fast 
+for 1 byte inputs (the size of a fingerprint).*
 
-*Thanks to how Cuckoo filters work, that choice is completely transparent to the clients.*
+*Thanks to how Cuckoo filters work, that choice is completely transparent to the 
+clients.*
 
 
 
 Installation 
 ------------
 
-1. Download a precompiled binary from the Release tab (or [click here](https://github.com/kristoff-it/redis-cuckoofilter/releases/download/0.1/redis-cuckoofilter-releases.zip)) of this repo or compile with `make all` (linux and osx supported)
+1. Download a precompiled binary from the [Release section](https://github.com/kristoff-it/redis-cuckoofilter/releases/) of this repo or compile with `make all` (linux and osx supported)
 
 2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis installation
 
@@ -101,7 +111,7 @@ Example: `CF.INIT test 64K`
 
 - `size`: string representing the size of the filter in bytes; one of {`1K`, `2K`, `4K`, `8K`, `16K`, `32K`, `64K`, `128K`, `256K`, `512K`, `1M`, `2M`, `4M`, `8M`, `16M`, `32M`, `64M`, `128M`, `256M`, `512M`, `1G`, `2G`, `4G`, `8G`}
 
-You can consider the size as both a measure of memory usage and the total number of elements you can put inside the filter before filling it up completely. A 64K filter will (roughly) allocate 64KBytes of memory and will hold up to ~65536 elements.
+You can consider the size as both a measure of memory usage and the total number of elements you can put inside the filter before filling it up completely. A 64K filter will (roughly) allocate 64KBytes of memory and will hold up to 65536 elements.
 
 In general, it's a good idea to size the filter so that it doesn't get too full, as it:
 - lowers the chance of overcrowding some buckets (you get the `too full` error if you add too many colliding items)
