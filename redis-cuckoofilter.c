@@ -1,3 +1,27 @@
+/**
+ * MIT License
+ * 
+ * Copyright (c) 2017 Loris Cro
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include "redismodule.h"
 #include <stdlib.h>
 #include <string.h>
@@ -63,7 +87,7 @@ static RedisModuleType *CuckooFilterType;
  */
 int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx);
-    if (argc != 4) return RedisModule_WrongArity(ctx);
+    if (argc != 3) return RedisModule_WrongArity(ctx);
 
     const char *filterType = RedisModule_StringPtrLen(argv[2], NULL);
     unsigned long long size = 1024ULL;
@@ -97,18 +121,6 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         return REDISMODULE_OK;
     }
 
-    long long bucketSize;
-    if (RedisModule_StringToLongLong(argv[3], &bucketSize) != REDISMODULE_OK) {
-        RedisModule_ReplyWithError(ctx,"ERR unable to parse bucketsize");
-        return REDISMODULE_OK;
-    }
-
-    if (bucketSize != 2 && bucketSize != 4){
-        RedisModule_ReplyWithError(ctx,"ERR invalid value for bucketsize");
-        return REDISMODULE_OK;   
-    }
-
-
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ|REDISMODULE_WRITE);
     int type = RedisModule_KeyType(key);
     if (type != REDISMODULE_KEYTYPE_EMPTY && RedisModule_ModuleTypeGetType(key) != CuckooFilterType)
@@ -124,14 +136,14 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         /** 
          * New Cuckoo Filter!
          */
-        cf = cf_init(size, bucketSize);
+        cf = cf_init(size, 4);
 
         RedisModule_ModuleTypeSetValue(key, CuckooFilterType, cf);
     } else {
         cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);
     }
 
-    RedisModule_ReplyWithLongLong(ctx, cf->numBuckets);
+    RedisModule_ReplyWithLongLong(ctx, size);
     return REDISMODULE_OK;
 }
 
@@ -227,7 +239,7 @@ int CFDump_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
     CuckooFilter *cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);
 
-    RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * cf->bucketSize);
+    RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 4);
 
     return REDISMODULE_OK;
 }

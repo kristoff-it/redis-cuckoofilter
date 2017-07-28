@@ -1,4 +1,28 @@
-#define CUCKOO_FILTER_ENCODING_VERSION 0
+/**
+ * MIT License
+ * 
+ * Copyright (c) 2017 Loris Cro
+ * 
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#define CUCKOO_FILTER_ENCODING_VERSION 1
 
 /** 
  * A couple typedefs to make my life easier.
@@ -16,7 +40,6 @@ typedef uint32_t u32;
  */
 typedef struct {
     u64 numBuckets;
-    u64 bucketSize;
     char *filter;
 } CuckooFilter;
 
@@ -27,7 +50,6 @@ typedef struct {
 inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
     cf->numBuckets = size/bucketSize;
-    cf->bucketSize = bucketSize;
     cf->filter = RedisModule_Alloc(size);
     memset(cf->filter, 0, size);
     return cf;
@@ -54,7 +76,7 @@ inline u64 cf_alternative_hash(CuckooFilter *cf, u64 hash, char fp) {
  * the bucketSize.
  */
 inline char *cf_read_bucket (CuckooFilter *cf, u64 hash) {
-    return cf->filter + (hash * cf->bucketSize);
+    return cf->filter + (hash * 4);
 }
 
 /**
@@ -76,20 +98,18 @@ inline int cf_insert_fp (CuckooFilter *cf, u64 hash, char fp, char *former_fp_pt
         return 1;
     }
 
-    if (cf->bucketSize == 4) {
-    	if (bucket[2] == 0) {
-    	    bucket[2] = fp;
-    	    return 1;
-    	}
+	if (bucket[2] == 0) {
+	    bucket[2] = fp;
+	    return 1;
+	}
 
-    	if (bucket[3] == 0) {
-    	    bucket[3] = fp;
-    	    return 1;
-    	}
-    }
+	if (bucket[3] == 0) {
+	    bucket[3] = fp;
+	    return 1;
+	}
 
     if (former_fp_ptr) {
-        int slot = (rand() % cf->bucketSize);
+        int slot = (rand() % 4);
         *former_fp_ptr = bucket[slot];
         bucket[slot] = fp;
     }
@@ -110,17 +130,15 @@ inline int cf_delete_fp(CuckooFilter *cf, u64 hash, char fp) {
         return 1;
     }
 
-    if (cf->bucketSize == 4) {
-    	if (bucket[2] == fp) {
-    	    bucket[2] = 0;
-    	    return 1;
-    	}
+	if (bucket[2] == fp) {
+	    bucket[2] = 0;
+	    return 1;
+	}
 
-    	if (bucket[3] == fp) {
-    	    bucket[3] = 0;
-    	    return 1;
-    	}
-    }
+	if (bucket[3] == fp) {
+	    bucket[3] = 0;
+	    return 1;
+	}
 
     bucket = cf_read_bucket(cf, cf_alternative_hash(cf, hash, fp));
 
@@ -134,17 +152,15 @@ inline int cf_delete_fp(CuckooFilter *cf, u64 hash, char fp) {
         return 1;
     }
 
-    if (cf->bucketSize == 4) {
-    	if (bucket[2] == fp) {
-    	    bucket[2] = 0;
-    	    return 1;
-    	}
+	if (bucket[2] == fp) {
+	    bucket[2] = 0;
+	    return 1;
+	}
 
-    	if (bucket[3] == fp) {
-    	    bucket[3] = 0;
-    	    return 1;
-    	}
-    }
+	if (bucket[3] == fp) {
+	    bucket[3] = 0;
+	    return 1;
+	}
 
     return 0;
 }
@@ -152,30 +168,15 @@ inline int cf_delete_fp(CuckooFilter *cf, u64 hash, char fp) {
 inline int cf_search_fp(CuckooFilter *cf, u64 hash, char fp){
 	char *bucket = cf_read_bucket(cf, hash);
 
-	if (bucket[0] == fp || bucket[1] == fp) {
+	if (bucket[0] == fp || bucket[1] == fp || bucket[2] == fp || bucket[3] == fp) {
 		return 1;
 	}
-
-
-	if (cf->bucketSize == 4) {
-		if (bucket[2] == fp || bucket[3] == fp) {
-			return 1;
-		}
-	}
-
 
 	bucket = cf_read_bucket(cf, cf_alternative_hash(cf, hash, fp));
 
-	if (bucket[0] == fp || bucket[1] == fp) {
-		return 1;
-	}
-
-
-	if (cf->bucketSize == 4) {
-		if (bucket[2] == fp || bucket[3] == fp) {
-			return 1;
-		}
-	}
+    if (bucket[0] == fp || bucket[1] == fp || bucket[2] == fp || bucket[3] == fp) {
+        return 1;
+    }
 
 	return 0;
 }
@@ -196,9 +197,8 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
     }
 
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
-    cf->bucketSize = RedisModule_LoadUnsigned(rdb);
     cf->filter = RedisModule_LoadStringBuffer(rdb, &cf->numBuckets);
-    cf->numBuckets /= cf->bucketSize;
+    cf->numBuckets /= 4;
     return cf;
 
 }
@@ -206,8 +206,7 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
 void CFSave (RedisModuleIO *rdb, void *value)
 {
     CuckooFilter *cf = value;
-    RedisModule_SaveUnsigned(rdb, cf->bucketSize);
-    RedisModule_SaveStringBuffer(rdb, cf->filter, cf->numBuckets * cf->bucketSize);
+    RedisModule_SaveStringBuffer(rdb, cf->filter, cf->numBuckets * 4);
 }
 
 void CFRewrite (RedisModuleIO *aof, RedisModuleString *key, void *value)
