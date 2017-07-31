@@ -18,4 +18,4 @@ jobs:
           background: true
       - run: sleep 3
       - run: redis-cli cf.selftest > test_result
-      - run: [[ $(< test_result) == OK ]]
+      - run: "[[ $(< test_result) == OK ]]"
