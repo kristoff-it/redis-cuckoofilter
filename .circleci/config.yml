@@ -8,7 +8,7 @@ jobs:
 
     steps:
       - checkout
-      - run: apt-get install -y build-essential
+      - run: apt-get update && apt-get install -y build-essential
       - run: cd ~/project
       - run: make clean && make all CFLAGS=-D=SELFTEST
       - run: cd test
