@@ -14,7 +14,7 @@ jobs:
       - run: make clean && make all CFLAGS=-D=SELFTEST
       - run:
           name: Running Redis
-          command: redis-server ~/project/test/redis.conf
+          command: cd ~/project/test && redis-server redis.conf
           background: true
       - run: sleep 3
       - run: redis-cli cf.selftest > test_result
