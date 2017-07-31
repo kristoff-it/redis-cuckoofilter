@@ -1,6 +1,7 @@
-redis-cuckoofilter
+redis-cuckoofilter &middot; [![CircleCI Status](https://circleci.com/gh/kristoff-it/redis-cuckoofilter.svg?style=shield&circle-token=:circle-token)]
 ==================
 Hashing-function agnostic Cuckoo filters for Redis
+
 
 
 What's a Cuckoo Filter?
