@@ -244,9 +244,24 @@ int CFDump_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     return REDISMODULE_OK;
 }
 
+#ifdef SELFTEST
+#include "test/src/tests.c"
+int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    RedisModule_AutoMemory(ctx);
+    
+    CleanupAllTests(ctx);    
+    int errors = RunAllTests(ctx);
+    CleanupAllTests(ctx);    
+    
+    if (errors) {
+        RedisModule_ReplyWithError(ctx, "ERR test failed");
+        return REDISMODULE_OK;
+    }
 
-
-
+    RedisModule_ReplyWithSimpleString(ctx, "OK");
+    return REDISMODULE_OK;
+}
+#endif
 
 
 
@@ -292,6 +307,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         CFDump_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
+#ifdef SELFTEST
+    printf("CUCKOO FILTER TEST BUILD -- DO NOT USE IN PRODUCTION\n");
+    if (RedisModule_CreateCommand(ctx,"cf.selftest",
+        CFTest_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+#endif
 
     return REDISMODULE_OK;
 }

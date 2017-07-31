@@ -94,6 +94,20 @@ Installation
    from the `.rdb` file.
 
 
+Running The Tests
+-----------------
+Since running the tests is more of a development feature than a user one, to 
+test this module you need to compile it as follows: 
+
+`make clean && make all CFLAGS=-D=SELFTEST`
+
+A module compiled this way has a new command: `CF.SELFTEST`. Call it and it will
+run the tests from within Redis (but using `RedisModule_Call`).
+
+The binary will also weight much more, as, to make the tests as fast as 
+possible, all the test data is pre-computed and embedded in the C code.
+
+
 Usage Example
 -------------
 
