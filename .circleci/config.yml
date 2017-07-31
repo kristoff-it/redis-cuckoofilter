@@ -1,0 +1,19 @@
+# Golang CircleCI 2.0 configuration file
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: library/redis:4.0.1
+
+    steps:
+      - checkout
+      - run: cd redis-cuckoofilter
+      - run: make clean && make all CFLAGS=-D=SELFTEST
+      - run: cd test
+      - run:
+          name: Running Redis
+          command: redis-server redis.conf
+          background: true
+      - run: sleep 3
+      - run: redis-cli cf.selftest > test_result
