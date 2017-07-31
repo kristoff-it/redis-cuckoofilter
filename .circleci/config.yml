@@ -8,7 +8,8 @@ jobs:
 
     steps:
       - checkout
-      - run: cd project
+      - run: apt-get install -y build-essential
+      - run: cd ~/project
       - run: make clean && make all CFLAGS=-D=SELFTEST
       - run: cd test
       - run:
@@ -17,3 +18,4 @@ jobs:
           background: true
       - run: sleep 3
       - run: redis-cli cf.selftest > test_result
+      - run: [[ $(< test_result) == OK ]]
