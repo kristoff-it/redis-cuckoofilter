@@ -1,4 +1,4 @@
-redis-cuckoofilter &middot; [![CircleCI Status](https://circleci.com/gh/kristoff-it/redis-cuckoofilter.svg?style=shield&circle-token=:circle-token)]
+redis-cuckoofilter &middot; ![CircleCI Status](https://circleci.com/gh/kristoff-it/redis-cuckoofilter.svg?style=shield&circle-token=:circle-token)
 ==================
 Hashing-function agnostic Cuckoo filters for Redis
 
@@ -10,7 +10,7 @@ Cuckoo filters are a probabilistic data structure that allows you to test for
 membership of an element in a set without having to hold the whole set in 
 memory.
 
-This is done at the expense of having a probability of getting a false positive 
+This is done at the cost of having a probability of getting a false positive 
 response, which, in other words, means that they can only answer "Definitely no" 
 or "Probably yes". The false positive probability is roughly inversely related 
 to how much memory you are willing to allocate to the filter.
@@ -38,7 +38,7 @@ clients.
 Since Cuckoo filters rely on a single hashing of the original item you want to 
 insert, it is possible to off-load that part of the computation to the client. 
 In practical terms it means that instead of sending the whole item to Redis, the
-clients send {hash, fingerprint} of the original item.
+clients send `{hash, fingerprint}` of the original item.
 
 ### What are the advantages of doing so?
 	
@@ -63,7 +63,7 @@ platforms.
 [This blogpost](http://aras-p.info/blog/2016/08/09/More-Hash-Function-Tests/) 
 shows a few benchmarks of different hashing function families.
 
-Considering all of that, the choice of {hashing func, fingerprinting func} has 
+Considering all of that, the choice of `{hashing func, fingerprinting func}` has 
 to be up to you.
 
 *For the internal partial hashing that has to happen when reallocating a 
@@ -95,19 +95,23 @@ Installation
    from the `.rdb` file.
 
 
-Running The Tests
------------------
+Testing 
+-------
 Since running the tests is more of a development feature than a user one, to 
 test this module you need to compile it as follows: 
 
 `make clean && make all CFLAGS=-D=SELFTEST`
 
-A module compiled this way has a new command: `CF.SELFTEST`. Call it and it will
-run the tests from within Redis (but using `RedisModule_Call`).
+A module compiled this way has a new command: `CF.SELFTEST`. Call it and it 
+will run the tests from within Redis (using `RedisModule_Call`).
 
 The binary will also weight much more, as, to make the tests as fast as 
 possible, all the test data is pre-computed and embedded in the C code.
 
+At the time of writing the tests consist in **93k ADD** (filling the test 
+filter up to 97%), **31K REM** and **201k CHECK** commands. Running those 
+tests takes about **1.36s** on a 2012 MacBook Pro. That's roughly **300k** 
+operations per second.
 
 Usage Example
 -------------
