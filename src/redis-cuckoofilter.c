@@ -22,16 +22,24 @@
  * SOFTWARE.
  */
 
-#include "redismodule.h"
 #include <stdlib.h>
 #include <string.h>
+#include "redismodule.h"
+#include "headers/short_types.h"
+#include "headers/cuckoofilter.h"
 
 static RedisModuleType *CuckooFilterType;
 
 /**
- * Direct include.
+ * Creates a new Cuckoo Filter
  */
-#include "cuckoofilter.c"
+static inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
+    CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
+    cf->numBuckets = size/bucketSize;
+    cf->filter = RedisModule_Alloc(size);
+    memset(cf->filter, 0, size);
+    return cf;
+}
 
 /**
  * Terrible macro that does the setup part for cd.add, cf.rem, and cf.check.
@@ -59,7 +67,7 @@ static RedisModuleType *CuckooFilterType;
         return REDISMODULE_OK;\
     }\
     \
-    fpChar = (char)fpLong;\
+    fpChar = (u8)fpLong;\
     \
     if (fpChar == 0)\
     {\
@@ -136,7 +144,7 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         /** 
          * New Cuckoo Filter!
          */
-        cf = cf_init(size, 4);
+        cf = cf_init(size, 8);
 
         RedisModule_ModuleTypeSetValue(key, CuckooFilterType, cf);
     } else {
@@ -153,7 +161,7 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 // CF.ADD key bucket fp
 int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     unsigned long long hash;
-    char fpChar;
+    u8 fpChar;
     RedisModuleKey *key;
     CuckooFilter *cf;
     COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ|REDISMODULE_WRITE)
@@ -165,7 +173,7 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_OK;
     }
 
-    char homelessFP = 0;
+    u8 homelessFP = 0;
     unsigned long long homelessHash = altHash;
     for (int n = 0; n < 500; n++) {
         cf_insert_fp(cf, homelessHash, fpChar, &homelessFP);
@@ -191,7 +199,7 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 // CF.REM key slot fp
 int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     unsigned long long hash;
-    char fpChar;
+    u8 fpChar;
     RedisModuleKey *key;
     CuckooFilter *cf;
     COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ|REDISMODULE_WRITE)
@@ -209,7 +217,7 @@ int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 // CF.CHECK key slot fp
 int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     unsigned long long hash;
-    char fpChar;
+    u8 fpChar;
     RedisModuleKey *key;
     CuckooFilter *cf;
     COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ)
@@ -239,13 +247,13 @@ int CFDump_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
     CuckooFilter *cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);
 
-    RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 4);
+    RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 8);
 
     return REDISMODULE_OK;
 }
 
 #ifdef SELFTEST
-#include "test/src/tests.c"
+#include "../test/src/tests.c"
 int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx);
     
@@ -263,6 +271,59 @@ int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 }
 #endif
 
+
+/**
+ *
+ *  REDIS DATATYPE FUNCTIONS
+ *  
+ */
+
+void *CFLoad (RedisModuleIO *rdb, int encver)
+{
+
+    if (encver != CUCKOO_FILTER_ENCODING_VERSION) {
+         // We should actually log an error here, or try to implement
+         //   the ability to load older versions of our data structure. 
+        return NULL;
+    }
+
+    CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
+    cf->filter = RedisModule_LoadStringBuffer(rdb, &cf->numBuckets);
+    cf->numBuckets /= 8;
+    return cf;
+
+}
+
+void CFSave (RedisModuleIO *rdb, void *value)
+{
+    CuckooFilter *cf = value;
+    RedisModule_SaveStringBuffer(rdb, cf->filter, cf->numBuckets * 8);
+}
+
+void CFRewrite (RedisModuleIO *aof, RedisModuleString *key, void *value)
+{
+    printf("CALLED rewrite!\n\n\n");
+}
+
+size_t CFMemUsage (void *value)
+{
+
+    printf("CALLED mem!\n\n\n");
+    return 0;
+}
+
+void CFDigest (RedisModuleDigest *digest, void *value)
+{
+
+    printf("CALLED digest!\n\n\n");
+}
+
+void CFFree (void *cf)
+{
+    RedisModule_Free(((CuckooFilter*)cf)->filter);
+    RedisModule_Free(cf);
+    printf("CALLED free!\n\n\n");
+}
 
 
 /* This function must be present on each Redis module. It is used in order to

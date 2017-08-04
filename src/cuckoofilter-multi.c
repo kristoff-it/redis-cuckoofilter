@@ -22,17 +22,12 @@
  * SOFTWARE.
  */
 
-#define CUCKOO_FILTER_ENCODING_VERSION 1
+#define CUCKOO_FILTER_MULTI_ENCODING_VERSION 0
+
+
 
 /** 
- * A couple typedefs to make my life easier.
- */
-typedef uint64_t u64;
-typedef int64_t  i64;
-typedef uint32_t u32;
-
-/** 
- * Cuckoo filter struct.
+ * Multiset Cuckoo filter struct.
  * Assumes that the size of a fingerprint is always 1 byte.
  * The reason for that is that makes the rest of the program
  * easier since, for now, a different FP size seems not that
@@ -40,14 +35,16 @@ typedef uint32_t u32;
  */
 typedef struct {
     u64 numBuckets;
+    u64 bytesPerCounter;
     char *filter;
-} CuckooFilter;
+} MultisetCuckooFilter;
+
 
 
 /**
  * Creates a new Cuckoo Filter
  */
-inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
+inline CuckooFilter *cf_init (u64 size, u32 bucketSize) {
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
     cf->numBuckets = size/bucketSize;
     cf->filter = RedisModule_Alloc(size);
@@ -62,7 +59,7 @@ inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
  * Also, since numBuckets is a power of 2, it uses a bitwise and
  * instead of a modulo.
  */
-inline u64 cf_alternative_hash(CuckooFilter *cf, u64 hash, char fp) {
+inline u64 cf_alternative_hash (CuckooFilter *cf, u64 hash, char fp) {
     const u64 fnv_offset = 14695981039346656037ULL;
     const u64 fnv_prime = 1099511628211ULL;
 

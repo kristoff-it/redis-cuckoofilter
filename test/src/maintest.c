@@ -67,7 +67,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	    }
 	}
 	printf("False positives: %.4f%%\n", (wrongCount/62000.0) * 100);
-	if ( wrongCount < 1900 ) {
+	if ( wrongCount < (1900 * 2) ) {
 	    printf("(TEST: PASSED)\n");
 	} else {
 	    printf("(TEST: FAILED)\n");
@@ -99,7 +99,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	    }
 	}
 	printf("Correctly forgotten (subject to false positive error): %.4f%%\n", ((31000 - wrongCount)/31000.0) * 100);
-	if ( wrongCount < 950 ) {
+	if ( wrongCount < (950 * 2) ) {
 	    printf("(TEST: PASSED)\n");
 	} else {
 	    printf("(TEST: FAILED)\n");
