@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "headers/bit_fiddling.h"
+#include "headers/bit-fiddling.h"
 #include "headers/cuckoofilter.h"
 
 

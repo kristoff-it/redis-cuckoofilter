@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <stddef.h>
 
 /** 
  * A couple typedefs to make my life easier.
@@ -13,4 +12,3 @@ typedef int32_t  i32;
 typedef int32_t  bool;
 typedef uint16_t u16;
 typedef uint8_t  u8;
-typedef size_t   size_t;  

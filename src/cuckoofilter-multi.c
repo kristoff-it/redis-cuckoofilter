@@ -44,7 +44,7 @@ typedef struct {
 /**
  * Creates a new Cuckoo Filter
  */
-inline CuckooFilter *cf_init (u64 size, u32 bucketSize) {
+static inline CuckooFilter *cf_init (u64 size, u32 bucketSize) {
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
     cf->numBuckets = size/bucketSize;
     cf->filter = RedisModule_Alloc(size);

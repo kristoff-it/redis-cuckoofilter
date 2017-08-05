@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "redismodule.h"
-#include "headers/short_types.h"
+#include "headers/short-types.h"
 #include "headers/cuckoofilter.h"
 
 static RedisModuleType *CuckooFilterType;
@@ -33,10 +33,21 @@ static RedisModuleType *CuckooFilterType;
 /**
  * Creates a new Cuckoo Filter
  */
-static inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
+static inline CuckooFilter *cf_init(u64 size, i64 fpSize, bool isMulti) {
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
-    cf->numBuckets = size/bucketSize;
+
+    i32 buckSize = BUCKSIZE(fpSize);
+    i32 compoundFpSize = fpSize;
+    if (isMulti)
+    {
+        compoundFpSize += (fpSize == 1 ? 4 : 8);
+    }
+
+    cf->numBuckets = size/(buckSize * compoundFpSize);
+    cf->fpSize = (u32)fpSize;
+    cf->isMulti = isMulti;
     cf->filter = RedisModule_Alloc(size);
+
     memset(cf->filter, 0, size);
     return cf;
 }
@@ -89,17 +100,27 @@ static inline CuckooFilter *cf_init(u64 size, u32 bucketSize) {
 
 
 /** 
- * CF.INIT key numBuckets bucketSize
+ * CF.INIT key numBuckets [fpSize]
  *
- * numBuckets is a power of 2 in the range [64K, ..., 1M, ..., 512M, ..., 1G, ...,  8G]
+ * numBuckets is a power of 2 in the range:
+ *     [1K, ..., 512K, ..., 1M, ..., 512M, ..., 1G, ...,  8G]
+ *     
+ * fpSize is {1, 2, 4}. Defaults to 1.
+ * Bucket size changes in function of fpSize: 
+ *     {1, 2} -> 4
+ *     {4}    -> 2.
  */
 int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx);
-    if (argc != 3) return RedisModule_WrongArity(ctx);
+    if (argc != 3 && argc != 4) return RedisModule_WrongArity(ctx);
 
     const char *filterType = RedisModule_StringPtrLen(argv[2], NULL);
-    unsigned long long size = 1024ULL;
-
+    
+    /**
+     *  Parse filterType and compute the corresponding bytesize.
+     *  TODO: gperf
+     */
+    u64 size = 1024ULL;
     if      (0 == strcmp("1K",   filterType)) size *= 1;
     else if (0 == strcmp("2K",   filterType)) size *= 2;
     else if (0 == strcmp("4K",   filterType)) size *= 4;
@@ -129,6 +150,28 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         return REDISMODULE_OK;
     }
 
+    /**
+     * Parse fpSize
+     */
+    i64 fpSize = 1;
+    if (argc == 4)
+    {
+        if (RedisModule_StringToLongLong(argv[3], &fpSize) != REDISMODULE_OK) 
+        {
+            RedisModule_ReplyWithError(ctx,"ERR invalid fingerprint size value");
+            return REDISMODULE_OK;
+        }
+
+        if (fpSize != 1 && fpSize != 2 && fpSize != 4)
+        {
+            RedisModule_ReplyWithError(ctx,"ERR unsupported fingerprint size");
+            return REDISMODULE_OK;
+        }
+    }
+
+    /**
+     * Obtain the key from Redis.
+     */
     RedisModuleKey *key = RedisModule_OpenKey(ctx, argv[1], REDISMODULE_READ|REDISMODULE_WRITE);
     int type = RedisModule_KeyType(key);
     if (type != REDISMODULE_KEYTYPE_EMPTY && RedisModule_ModuleTypeGetType(key) != CuckooFilterType)
@@ -144,14 +187,15 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         /** 
          * New Cuckoo Filter!
          */
-        cf = cf_init(size, 8);
+        cf = cf_init(size, fpSize, 0);
 
         RedisModule_ModuleTypeSetValue(key, CuckooFilterType, cf);
     } else {
-        cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);
+        RedisModule_ReplyWithError(ctx,"ERR key already exists");
+        return REDISMODULE_OK;
     }
 
-    RedisModule_ReplyWithLongLong(ctx, size);
+    RedisModule_ReplyWithLongLong(ctx, size/fpSize);
     return REDISMODULE_OK;
 }
 

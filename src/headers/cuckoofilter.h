@@ -1,11 +1,13 @@
 #pragma once
 
-#include "short_types.h"
+#include "short-types.h"
 
 #define CUCKOO_FILTER_ENCODING_VERSION 2
-
+#define BUCKSIZE(fp) ((fp) == 4 ? 2 : 4)
 typedef struct {
     u64 numBuckets;
+    u32 fpSize;
+    bool isMulti;
     u8 *filter;
 } CuckooFilter;
 

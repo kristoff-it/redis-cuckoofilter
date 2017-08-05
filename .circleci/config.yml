@@ -10,7 +10,7 @@ jobs:
       - checkout
       - run: apt-get update 
       - run: apt-get install -y build-essential
-      - run: cd ~/project
+      - run: cd ~/project/src
       - run: make clean && make all CFLAGS=-D=SELFTEST
       - run:
           name: Running Redis
