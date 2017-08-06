@@ -8,14 +8,12 @@ jobs:
 
     steps:
       - checkout
-      - run: apt-get update 
-      - run: apt-get install -y build-essential
-      - run: cd ~/project/src
-      - run: make clean && make all CFLAGS=-D=SELFTEST
       - run:
           name: Running Redis
           command: cd ~/project/test && redis-server redis.conf
           background: true
-      - run: sleep 3
+      - run: apt-get update 
+      - run: apt-get install -y build-essential
+      - run: cd ~/project/src && make clean && make all CFLAGS=-D=SELFTEST
       - run: redis-cli cf.selftest > test_result
       - run: "[[ $(< test_result) == OK ]]"
