@@ -63,12 +63,12 @@ extern inline u64 cf_alternative_hash32 (CuckooFilter *cf, u64 hash, u32 fp) {
  * What follows is a macronightmare.
  * Each funcion is rewritten for {1, 2, 4}byte fingerprints.
  * The expansion is mainly about u8, u16 and u32 fingerprint types,
- * but there also some differences in the memory layout.
+ * but there also are some differences in the memory layout.
  * 
  * To inspect the code without losing your mind, preprocess it as follows:
- *     $ gcc -E cuckoofilter.c | astyle > mxx.c
+ *     $ gcc -E cuckoofilter.c | astyle > cuckoofilter-exp.c
  *     
- * mxx.c will then contain a readable version of this file.
+ * cuckoofilter-exp.c will then contain a readable version of this file.
  */
 
 
@@ -96,6 +96,7 @@ CF_READ_BUCKETXX(32, 8);
  */
 #define CF_INSERT_FPXX(FPSIZE, BUCKLEN, WORDSIZE)\
 extern inline bool cf_insert_fp ## FPSIZE (CuckooFilter *cf, u64 hash, u ## FPSIZE fp, u ## FPSIZE *former_fp_ptr) {\
+    printf("-> %i\n", fp);\
     u ## FPSIZE *bucket = cf_read_bucket ## FPSIZE(cf, hash);\
     if (has_zero ## FPSIZE(*(u ## WORDSIZE*)bucket))\
     {\
@@ -123,14 +124,11 @@ CF_INSERT_FPXX(32, 2, 64);
 #define CF_DELETE_FPXX(FPSIZE, BUCKLEN, WORDSIZE)\
 extern inline bool cf_delete_fp ## FPSIZE (CuckooFilter *cf, u64 hash, u ## FPSIZE fp) {\
     u ## FPSIZE *bucket = cf_read_bucket ## FPSIZE (cf, hash);\
-    if (has_value ## FPSIZE(*(u ## WORDSIZE*)bucket, fp))\
+    for (int i = 0; i < BUCKLEN; ++i)\
     {\
-        for (int i = 0; i < BUCKLEN; ++i)\
-        {\
-            if (bucket[i] == fp) {\
-                bucket[i] = 0;\
-                return 1;\
-            }\
+        if (bucket[i] == fp) {\
+            bucket[i] = 0;\
+            return 1;\
         }\
     }\
     bucket = cf_read_bucket ## FPSIZE(cf, cf_alternative_hash ## FPSIZE(cf, hash, fp));\
@@ -149,20 +147,23 @@ CF_DELETE_FPXX(32, 2, 64);
 #undef CF_DELETE_FPXX
 
 
-#define CF_SEARCH_FPXX(FPSIZE, WORDSIZE)\
+#define CF_SEARCH_FPXX(FPSIZE, WORDSIZE, EXTRA)\
 extern inline bool cf_search_fp ## FPSIZE (CuckooFilter *cf, u64 hash, u ## FPSIZE fp){\
     u ## FPSIZE *bucket = cf_read_bucket ## FPSIZE(cf, hash);\
-    if (has_value ## FPSIZE(*(u ## WORDSIZE*)bucket, fp)) {\
+    if (bucket[0] == fp || bucket[1] == fp EXTRA) {\
         return 1;\
     }\
     bucket = cf_read_bucket ## FPSIZE(cf, cf_alternative_hash ## FPSIZE(cf, hash, fp));\
-    if (has_value ## FPSIZE(*(u ## WORDSIZE*)bucket, fp)) {\
+    if (bucket[0] == fp || bucket[1] == fp EXTRA) {\
         return 1;\
     }\
     return 0;\
 }
-CF_SEARCH_FPXX(8, 32);
-CF_SEARCH_FPXX(16, 64);
-CF_SEARCH_FPXX(32, 64);
+CF_SEARCH_FPXX(8, 32, || bucket[2] == fp || bucket[3] == fp);
+CF_SEARCH_FPXX(16, 64, || bucket[2] == fp || bucket[3] == fp);
+CF_SEARCH_FPXX(32, 64, );
 #undef CF_SEARCH_FPXX
 
+    // if (has_value ## FPSIZE(*(u ## WORDSIZE*)bucket, fp)) {\
+    //     return 1;\
+    // }\

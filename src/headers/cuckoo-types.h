@@ -27,8 +27,3 @@ typedef union
     u8  u8[4];
 } FP32;
 
-typedef struct
-{
-    u64 u64;
-    FP32 FP32[2];
-} FP64;

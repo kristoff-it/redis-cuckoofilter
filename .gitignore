@@ -56,3 +56,5 @@ dkms.conf
 *.rdb
 .python-version
 .DS_Store
+
+*.pyc

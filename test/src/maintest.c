@@ -2,16 +2,16 @@ void cleanMainTest(RedisModuleCtx *ctx) {
 	RedisModule_Call(ctx, "del", "c", "__test-cuckoo-filter__");
 }
 
-int mainTest(RedisModuleCtx *ctx) {
+int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 
 #include "../test-data.c"
 	
 	RedisModuleCallReply *reply;
 
-	reply = RedisModule_Call(ctx, "cf.init", "cc", "__test-cuckoo-filter__", "64K");
+	reply = RedisModule_Call(ctx, "cf.init", "ccc", "__test-cuckoo-filter__", filterType, fpSize);
 	if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
 	    long long testFilterSize = RedisModule_CallReplyInteger(reply);
-	    printf("Test filter created: %lli\n", testFilterSize);
+	    printf("Test filter created: %s %s -> %lli\n", filterType, fpSize, testFilterSize);
 	} else {
 	    return 1;
 	}
@@ -22,6 +22,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	{
 	    reply = RedisModule_Call(ctx, "CF.ADD", "ccc", "__test-cuckoo-filter__", goodItemsH[i], goodItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -35,6 +36,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
 	        correctCount += RedisModule_CallReplyInteger(reply);
 	    } else {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -45,7 +47,6 @@ int mainTest(RedisModuleCtx *ctx) {
 	    printf("(TEST: FAILED)\n");
 	    return 1;
 	}
-
 // ------------------
 	printf("Checking for false positives...\n");
 	long long wrongCount = 0;
@@ -56,6 +57,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	        i64 x = RedisModule_CallReplyInteger(reply);
 	        wrongCount += x;
 	    } else {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -74,6 +76,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	{
 	    reply = RedisModule_Call(ctx, "CF.REM", "ccc", "__test-cuckoo-filter__", deletedItemsH[i], deletedItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -86,6 +89,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	        i64 x = RedisModule_CallReplyInteger(reply);
 	        wrongCount += x;
 	    } else {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -104,6 +108,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	{
 	    reply = RedisModule_Call(ctx, "CF.ADD", "ccc", "__test-cuckoo-filter__", deletedItemsH[i], deletedItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
@@ -115,6 +120,7 @@ int mainTest(RedisModuleCtx *ctx) {
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
 	        correctCount += RedisModule_CallReplyInteger(reply);
 	    } else {
+	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}

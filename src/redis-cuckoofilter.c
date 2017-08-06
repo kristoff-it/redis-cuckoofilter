@@ -165,13 +165,8 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         return REDISMODULE_OK;\
     }\
     \
-    if (RedisModule_StringToLongLong(argv[3], &fpLong) != REDISMODULE_OK) {\
+    if (RedisModule_StringToLongLong(argv[3], (i64*)&fpLong) != REDISMODULE_OK) {\
         RedisModule_ReplyWithError(ctx,"ERR invalid fprint value");\
-        return REDISMODULE_OK;\
-    }\
-    \
-    if (fpLong < 0 || fpLong > 255){\
-        RedisModule_ReplyWithError(ctx,"ERR fprint is not in range [0, 255]");\
         return REDISMODULE_OK;\
     }\
     \
@@ -205,9 +200,9 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     {
         case 1:
         {
-            u8 fp = (u8)fpLong;
+            u8 fp = fpLong;
             u64 altHash = cf_alternative_hash8(cf, hash, fp);
-
+            printf("inserting %lli", fp);
             if (cf_insert_fp8(cf, hash, fp, NULL) || cf_insert_fp8(cf, altHash, fp, NULL)) 
             {
                 RedisModule_ReplyWithSimpleString(ctx, "OK");
@@ -231,7 +226,7 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         } break;
         case 2:
         {
-            u16 fp = (u16)fpLong;
+            u16 fp = fpLong;
             u64 altHash = cf_alternative_hash16(cf, hash, fp);
 
             if (cf_insert_fp16(cf, hash, fp, NULL) || cf_insert_fp16(cf, altHash, fp, NULL)) 
@@ -257,7 +252,7 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         } break;
         case 4:
         {
-            u32 fp = (u32)fpLong;
+            u32 fp = fpLong;
             u64 altHash = cf_alternative_hash32(cf, hash, fp);
 
             if (cf_insert_fp32(cf, hash, fp, NULL) || cf_insert_fp32(cf, altHash, fp, NULL)) 
@@ -302,13 +297,13 @@ int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     switch(cf->fpSize)
     {
         case 1:
-            success = cf_delete_fp8(cf, hash, (u8)fpLong);
+            success = cf_delete_fp8(cf, hash, fpLong);
             break;
         case 2:
-            success = cf_delete_fp16(cf, hash, (u16)fpLong);
+            success = cf_delete_fp16(cf, hash, fpLong);
             break;
         case 4:
-            success = cf_delete_fp32(cf, hash, (u32)fpLong);
+            success = cf_delete_fp32(cf, hash, fpLong);
             break;
     }
 
@@ -335,13 +330,13 @@ int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     switch(cf->fpSize)
     {
         case 1:
-            success = cf_search_fp8(cf, hash, (u8)fpLong);
+            success = cf_search_fp8(cf, hash, fpLong);
             break;
         case 2:
-            success = cf_search_fp16(cf, hash, (u16)fpLong);
+            success = cf_search_fp16(cf, hash, fpLong);
             break;
         case 4:
-            success = cf_search_fp32(cf, hash, (u32)fpLong);
+            success = cf_search_fp32(cf, hash, fpLong);
             break;
     }
 
@@ -349,7 +344,7 @@ int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
         RedisModule_ReplyWithLongLong(ctx, 1);
         return REDISMODULE_OK;
     }
-
+    //printf("Failed: \n%s %s \n%llu %llu\n", RedisModule_StringPtrLen(argv[2], NULL), RedisModule_StringPtrLen(argv[3], NULL), hash, fpLong);
     RedisModule_ReplyWithLongLong(ctx, 0);
     return REDISMODULE_OK;
 }
@@ -385,7 +380,7 @@ int CFDump_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     return REDISMODULE_OK;
 }
 
-// CF.UTILS err bucklen
+// CF.UTILS {err, fpsize} err bucklen
 int CFUtils_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx);
     if (argc != 3) return RedisModule_WrongArity(ctx);
@@ -415,6 +410,10 @@ int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     CleanupAllTests(ctx);    
 
     RedisModule_ReplyWithSimpleString(ctx, "OK");
+    return REDISMODULE_OK;
+}
+int CFRand_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    RedisModule_ReplyWithLongLong(ctx, rand());
     return REDISMODULE_OK;
 }
 #endif
@@ -522,8 +521,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 #ifdef SELFTEST
     printf("CUCKOO FILTER TEST BUILD -- DO NOT USE IN PRODUCTION\n");
+    srand(42);
     if (RedisModule_CreateCommand(ctx,"cf.selftest",
         CFTest_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+    if (RedisModule_CreateCommand(ctx,"cf.rand",
+        CFRand_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 #endif
 
