@@ -59,12 +59,16 @@ static inline CuckooFilter *cf_init (u64 size, u32 bucketSize) {
  * Also, since numBuckets is a power of 2, it uses a bitwise and
  * instead of a modulo.
  */
-inline u64 cf_alternative_hash (CuckooFilter *cf, u64 hash, char fp) {
-    const u64 fnv_offset = 14695981039346656037ULL;
-    const u64 fnv_prime = 1099511628211ULL;
+extern inline u64 mcf_alternative_hash (CuckooFilter *cf, u64 hash, u32 fp) {
+    FP32 fpU = (FP32)fp;
 
-    //             ( ------ FNV1a hashing ------ )
-    return (hash ^ ((fnv_offset ^ fp) * fnv_prime)) & (cf->numBuckets - 1);
+    u64 fpH = FNV_OFFSET;
+    for (int i = 0; i < cf->fpSize; ++i)
+    {
+        fpH = FNV1A(fpH, fpU.u8[i]);
+    }
+
+    return (hash ^ fpH) % cf->numBuckets;
 }
 
 

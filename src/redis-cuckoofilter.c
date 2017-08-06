@@ -24,76 +24,26 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "redismodule.h"
-#include "headers/short-types.h"
 #include "headers/cuckoofilter.h"
+// #include "tempfilter.c"
 
 static RedisModuleType *CuckooFilterType;
 
 /**
  * Creates a new Cuckoo Filter
  */
-static inline CuckooFilter *cf_init(u64 size, i64 fpSize, bool isMulti) {
+static inline CuckooFilter *cf_init(u64 size, u64 fpSize, bool isMulti) {
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
-
-    i32 buckSize = BUCKSIZE(fpSize);
-    i32 compoundFpSize = fpSize;
-    if (isMulti)
-    {
-        compoundFpSize += (fpSize == 1 ? 4 : 8);
-    }
-
-    cf->numBuckets = size/(buckSize * compoundFpSize);
+    
+    cf->numBuckets = size/(fpSize == 1 ? 4 : 8);
     cf->fpSize = (u32)fpSize;
-    cf->isMulti = isMulti;
+    cf->isMulti = (u32)isMulti;
     cf->filter = RedisModule_Alloc(size);
 
     memset(cf->filter, 0, size);
     return cf;
-}
-
-/**
- * Terrible macro that does the setup part for cd.add, cf.rem, and cf.check.
- * Parses the hash, the FP, and gets the CuckooFilter from Redis.
- * Since handling errors is gonna be somewhat janky anyway, I'm going full macro.
- * (for now)
- */
-#define COMMAND_4_PREAMBLE(hash, fpChar, key, cf, mode) {\
-    RedisModule_AutoMemory(ctx);\
-    if (argc != 4) return RedisModule_WrongArity(ctx);\
-    \
-    if (RedisModule_StringToLongLong(argv[2], (long long *)&hash) != REDISMODULE_OK) {\
-        RedisModule_ReplyWithError(ctx,"ERR hash is not unsigned long long");\
-        return REDISMODULE_OK;\
-    }\
-    \
-    long long fpLong;\
-    if (RedisModule_StringToLongLong(argv[3], &fpLong) != REDISMODULE_OK) {\
-        RedisModule_ReplyWithError(ctx,"ERR invalid fprint value");\
-        return REDISMODULE_OK;\
-    }\
-    \
-    if (fpLong < 0 || fpLong > 255){\
-        RedisModule_ReplyWithError(ctx,"ERR fprint is not in range [0, 255]");\
-        return REDISMODULE_OK;\
-    }\
-    \
-    fpChar = (u8)fpLong;\
-    \
-    if (fpChar == 0)\
-    {\
-        fpChar = 1;\
-    }\
-    \
-    key = RedisModule_OpenKey(ctx, argv[1], mode);\
-    int type = RedisModule_KeyType(key);\
-    if (type == REDISMODULE_KEYTYPE_EMPTY || RedisModule_ModuleTypeGetType(key) != CuckooFilterType)\
-    {\
-        RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);\
-        return REDISMODULE_OK;\
-    }\
-    cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);\
-    hash = hash & (cf->numBuckets - 1);\
 }
 
 
@@ -200,59 +150,174 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 }
 
 
+/**
+ * Terrible macro that does the setup part for cd.add, cf.rem, and cf.check.
+ * Parses the hash, the FP, and gets the CuckooFilter from Redis.
+ * Since handling errors is gonna be somewhat janky anyway, I'm going full macro.
+ * (for now)
+ */
+#define COMMAND_4_PREAMBLE(mode) {\
+    RedisModule_AutoMemory(ctx);\
+    if (argc != 4) return RedisModule_WrongArity(ctx);\
+    \
+    if (RedisModule_StringToLongLong(argv[2], (i64*)&hash) != REDISMODULE_OK) {\
+        RedisModule_ReplyWithError(ctx,"ERR hash is not unsigned long long");\
+        return REDISMODULE_OK;\
+    }\
+    \
+    if (RedisModule_StringToLongLong(argv[3], &fpLong) != REDISMODULE_OK) {\
+        RedisModule_ReplyWithError(ctx,"ERR invalid fprint value");\
+        return REDISMODULE_OK;\
+    }\
+    \
+    if (fpLong < 0 || fpLong > 255){\
+        RedisModule_ReplyWithError(ctx,"ERR fprint is not in range [0, 255]");\
+        return REDISMODULE_OK;\
+    }\
+    \
+    if (fpLong == 0)\
+    {\
+        fpLong = 1;\
+    }\
+    \
+    key = RedisModule_OpenKey(ctx, argv[1], mode);\
+    int type = RedisModule_KeyType(key);\
+    if (type == REDISMODULE_KEYTYPE_EMPTY || RedisModule_ModuleTypeGetType(key) != CuckooFilterType)\
+    {\
+        RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);\
+        return REDISMODULE_OK;\
+    }\
+    cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);\
+    hash = hash & (cf->numBuckets - 1);\
+}
 
-
-// CF.ADD key bucket fp
+/**
+ * CF.ADD key bucket fp
+ */
 int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    unsigned long long hash;
-    u8 fpChar;
+    u64 hash;
     RedisModuleKey *key;
+    u64 fpLong;
     CuckooFilter *cf;
-    COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ|REDISMODULE_WRITE)
+    COMMAND_4_PREAMBLE(REDISMODULE_READ|REDISMODULE_WRITE)
 
-    unsigned long long altHash = cf_alternative_hash(cf, hash, fpChar);
+    switch(cf->fpSize)
+    {
+        case 1:
+        {
+            u8 fp = (u8)fpLong;
+            u64 altHash = cf_alternative_hash8(cf, hash, fp);
 
-    if (cf_insert_fp(cf, hash, fpChar, NULL) || cf_insert_fp(cf, altHash, fpChar, NULL)) {
-        RedisModule_ReplyWithSimpleString(ctx, "OK");
-        return REDISMODULE_OK;
-    }
+            if (cf_insert_fp8(cf, hash, fp, NULL) || cf_insert_fp8(cf, altHash, fp, NULL)) 
+            {
+                RedisModule_ReplyWithSimpleString(ctx, "OK");
+                return REDISMODULE_OK;
+            }
 
-    u8 homelessFP = 0;
-    unsigned long long homelessHash = altHash;
-    for (int n = 0; n < 500; n++) {
-        cf_insert_fp(cf, homelessHash, fpChar, &homelessFP);
+            u8 homelessFP = 0;
+            u64 homelessHash = altHash;
+            for (int n = 0; n < 500; n++) {
+                cf_insert_fp8(cf, homelessHash, fp, &homelessFP);
 
-        if (!homelessFP) {
-            RedisModule_ReplyWithSimpleString(ctx, "OK");
+                if (!homelessFP) {
+                    RedisModule_ReplyWithSimpleString(ctx, "OK");
+                    return REDISMODULE_OK;
+                } 
+
+                homelessHash = cf_alternative_hash8(cf, homelessHash, homelessFP);
+                fp = homelessFP;
+                homelessFP = 0;
+            }
+        } break;
+        case 2:
+        {
+            u16 fp = (u16)fpLong;
+            u64 altHash = cf_alternative_hash16(cf, hash, fp);
+
+            if (cf_insert_fp16(cf, hash, fp, NULL) || cf_insert_fp16(cf, altHash, fp, NULL)) 
+            {
+                RedisModule_ReplyWithSimpleString(ctx, "OK");
+                return REDISMODULE_OK;
+            }
+
+            u16 homelessFP = 0;
+            u64 homelessHash = altHash;
+            for (int n = 0; n < 500; n++) {
+                cf_insert_fp16(cf, homelessHash, fp, &homelessFP);
+
+                if (!homelessFP) {
+                    RedisModule_ReplyWithSimpleString(ctx, "OK");
+                    return REDISMODULE_OK;
+                } 
+
+                homelessHash = cf_alternative_hash16(cf, homelessHash, homelessFP);
+                fp = homelessFP;
+                homelessFP = 0;
+            }
+        } break;
+        case 4:
+        {
+            u32 fp = (u32)fpLong;
+            u64 altHash = cf_alternative_hash32(cf, hash, fp);
+
+            if (cf_insert_fp32(cf, hash, fp, NULL) || cf_insert_fp32(cf, altHash, fp, NULL)) 
+            {
+                RedisModule_ReplyWithSimpleString(ctx, "OK");
+                return REDISMODULE_OK;
+            }
+
+            u32 homelessFP = 0;
+            u64 homelessHash = altHash;
+            for (int n = 0; n < 500; n++) {
+                cf_insert_fp32(cf, homelessHash, fp, &homelessFP);
+
+                if (!homelessFP) {
+                    RedisModule_ReplyWithSimpleString(ctx, "OK");
+                    return REDISMODULE_OK;
+                } 
+
+                homelessHash = cf_alternative_hash32(cf, homelessHash, homelessFP);
+                fp = homelessFP;
+                homelessFP = 0;
+            }
+        } break;
+        default:
+        {
+            RedisModule_ReplyWithError(ctx,"ERR too full");
             return REDISMODULE_OK;
-        } 
-
-        homelessHash = cf_alternative_hash(cf, homelessHash, homelessFP);
-        fpChar = homelessFP;
-        homelessFP = 0;
-
+        }
     }
-
-
-    // Return the length of the cuckoo filter
-    RedisModule_ReplyWithError(ctx,"ERR too full");
-    return REDISMODULE_OK;
 }
 
 
 // CF.REM key slot fp
 int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     unsigned long long hash;
-    u8 fpChar;
+    u64 fpLong;
     RedisModuleKey *key;
     CuckooFilter *cf;
-    COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ|REDISMODULE_WRITE)
+    COMMAND_4_PREAMBLE(REDISMODULE_READ|REDISMODULE_WRITE)
 
-    if (!cf_delete_fp(cf, hash, fpChar)){
+    bool success = 0;
+    switch(cf->fpSize)
+    {
+        case 1:
+            success = cf_delete_fp8(cf, hash, (u8)fpLong);
+            break;
+        case 2:
+            success = cf_delete_fp16(cf, hash, (u16)fpLong);
+            break;
+        case 4:
+            success = cf_delete_fp32(cf, hash, (u32)fpLong);
+            break;
+    }
+
+    if (!success)
+    {
         RedisModule_ReplyWithError(ctx,"ERR tried to delete non-existing item. THE FILTER MIGHT BE COMPROMISED.");
         return REDISMODULE_OK;
     }
-
+                    
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
 }
@@ -260,17 +325,30 @@ int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 // CF.CHECK key slot fp
 int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-    unsigned long long hash;
-    u8 fpChar;
+    u64 hash;
+    u64 fpLong;
     RedisModuleKey *key;
     CuckooFilter *cf;
-    COMMAND_4_PREAMBLE(hash, fpChar, key, cf, REDISMODULE_READ)
+    COMMAND_4_PREAMBLE(REDISMODULE_READ)
 
-    if (cf_search_fp(cf, hash, fpChar)){
+    bool success = 0;
+    switch(cf->fpSize)
+    {
+        case 1:
+            success = cf_search_fp8(cf, hash, (u8)fpLong);
+            break;
+        case 2:
+            success = cf_search_fp16(cf, hash, (u16)fpLong);
+            break;
+        case 4:
+            success = cf_search_fp32(cf, hash, (u32)fpLong);
+            break;
+    }
+
+    if (success){
         RedisModule_ReplyWithLongLong(ctx, 1);
         return REDISMODULE_OK;
     }
-    
 
     RedisModule_ReplyWithLongLong(ctx, 0);
     return REDISMODULE_OK;
@@ -291,10 +369,36 @@ int CFDump_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
 
     CuckooFilter *cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);
 
-    RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 8);
+    switch(cf->fpSize)
+    {
+        case 1:
+            RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 4);
+            break;
+        case 2:
+            RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 8);
+            break;
+        case 4:
+            RedisModule_ReplyWithStringBuffer(ctx, cf->filter, cf->numBuckets * 8);
+            break;
+    }
 
     return REDISMODULE_OK;
 }
+
+// CF.UTILS err bucklen
+int CFUtils_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    RedisModule_AutoMemory(ctx);
+    if (argc != 3) return RedisModule_WrongArity(ctx);
+
+    double targetError = strtod(RedisModule_StringPtrLen(argv[1], NULL), NULL);
+    u64 buckLen;
+    RedisModule_StringToLongLong(argv[2], &buckLen);
+    
+    RedisModule_ReplyWithDouble(ctx, log2(1/targetError) + log(2*buckLen));
+
+    return REDISMODULE_OK;
+}
+
 
 #ifdef SELFTEST
 #include "../test/src/tests.c"
@@ -303,12 +407,12 @@ int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     
     CleanupAllTests(ctx);    
     int errors = RunAllTests(ctx);
-    CleanupAllTests(ctx);    
     
     if (errors) {
         RedisModule_ReplyWithError(ctx, "ERR test failed");
         return REDISMODULE_OK;
     }
+    CleanupAllTests(ctx);    
 
     RedisModule_ReplyWithSimpleString(ctx, "OK");
     return REDISMODULE_OK;
@@ -332,7 +436,7 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
     }
 
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
-    cf->filter = RedisModule_LoadStringBuffer(rdb, &cf->numBuckets);
+    cf->filter = (u8*)RedisModule_LoadStringBuffer(rdb, &cf->numBuckets);
     cf->numBuckets /= 8;
     return cf;
 
@@ -341,7 +445,7 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
 void CFSave (RedisModuleIO *rdb, void *value)
 {
     CuckooFilter *cf = value;
-    RedisModule_SaveStringBuffer(rdb, cf->filter, cf->numBuckets * 8);
+    RedisModule_SaveStringBuffer(rdb, (const char *)cf->filter, cf->numBuckets * 8);
 }
 
 void CFRewrite (RedisModuleIO *aof, RedisModuleString *key, void *value)
@@ -410,6 +514,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
     if (RedisModule_CreateCommand(ctx,"cf.dump",
         CFDump_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+
+    if (RedisModule_CreateCommand(ctx,"cf.utils",
+        CFUtils_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 
 #ifdef SELFTEST

@@ -5,6 +5,7 @@
 int RunAllTests(RedisModuleCtx *ctx) {
 	if (mainTest(ctx)) return 1;
 
+	printf("\nALL TESTS PASSED!\n");
 	return 0;
 }
 
