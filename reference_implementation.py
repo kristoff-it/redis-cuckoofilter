@@ -29,7 +29,6 @@
 # access to C's rand() and both worlds are seeded with the same value.
 
 import ctypes
-# from test.build_test_data import GOODH, GOODF, WRONGH, WRONGF, DELETEDH, DELETEDF
 from cffi import FFI
 
 # Get access to C's rand() function and seed it as we did in the module.
@@ -50,12 +49,12 @@ def FNV1A(x, fpsize):
     h = 14695981039346656037
     for i in range(fpsize):
         h = (h ^ xbytes[i]) * 1099511628211
-    return h
+    return h & 0xffffffffffffffff
 
 
 class RedisCuckooFilter:
     def __init__(self, size, fpsize):
-        assert fpSize in [1,2,4]
+        assert fpsize in [1,2,4]
         assert size % 2 == 0
 
         self.size = size
@@ -74,9 +73,9 @@ class RedisCuckooFilter:
         fp = ctypes.c_ulonglong(int(fpString)).value
 
         altH = self._alternative_hash(h, fp)
-        
+            
         if self._insert_fp(h, fp, None) or self._insert_fp(altH, fp, None):
-            return "OK"
+            return b"OK"
 
         # This is used to mimic what in C would be passing a "OUT" parameter to
         # a function (ie a pointer to write into).
@@ -86,13 +85,13 @@ class RedisCuckooFilter:
         for _ in range(500):
             self._insert_fp(homelessH, fp, homelessFPContainer)
             if len(homelessFPContainer) == 0:
-                return "OK"
+                return b"OK"
 
             homelessH = self._alternative_hash(homelessH, homelessFPContainer[0])
             fp = homelessFPContainer[0]
             homelessFPContainer = []
 
-        return "ERR too full"
+        return b"ERR too full"
 
     def check(self, hashString, fpString):
         h = ctypes.c_ulonglong(int(hashString)).value % self.numBuckets
@@ -116,11 +115,11 @@ class RedisCuckooFilter:
 
         if fp in bucket:
             bucket[bucket.index(fp)] = 0
-            return "OK"
+            return b"OK"
 
         if fp in altbucket:
             altbucket[altbucket.index(fp)] = 0
-            return "OK"
+            return b"OK"
 
         return "ERR trying to delete non existing item. THE FILTER MIGHT BE CORRUPTED!"
 
@@ -140,7 +139,7 @@ class RedisCuckooFilter:
                     return  True
 
         if homelessFPContainer is not None:
-            slot = C.rand() % self.fpSize
+            slot = C.rand() % (2 if self.fpSize == 4 else 4)
             homelessFPContainer.append(bucket[slot])
             bucket[slot] = fp
 

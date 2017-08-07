@@ -96,7 +96,6 @@ CF_READ_BUCKETXX(32, 8);
  */
 #define CF_INSERT_FPXX(FPSIZE, BUCKLEN, WORDSIZE)\
 extern inline bool cf_insert_fp ## FPSIZE (CuckooFilter *cf, u64 hash, u ## FPSIZE fp, u ## FPSIZE *former_fp_ptr) {\
-    printf("-> %i\n", fp);\
     u ## FPSIZE *bucket = cf_read_bucket ## FPSIZE(cf, hash);\
     if (has_zero ## FPSIZE(*(u ## WORDSIZE*)bucket))\
     {\

@@ -58,3 +58,4 @@ dkms.conf
 .DS_Store
 
 *.pyc
+.cache/v/cache/lastfailed

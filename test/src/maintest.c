@@ -26,7 +26,6 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 	        return 1;
 	    }
 	}
-
 // ------------------
 	printf("Checking...\n");
 	long long correctCount = 0;

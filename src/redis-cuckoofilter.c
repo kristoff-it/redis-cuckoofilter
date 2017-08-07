@@ -200,9 +200,8 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     {
         case 1:
         {
-            u8 fp = fpLong;
+            u8 fp = fpLong & 0xff;
             u64 altHash = cf_alternative_hash8(cf, hash, fp);
-            printf("inserting %lli", fp);
             if (cf_insert_fp8(cf, hash, fp, NULL) || cf_insert_fp8(cf, altHash, fp, NULL)) 
             {
                 RedisModule_ReplyWithSimpleString(ctx, "OK");
@@ -330,13 +329,13 @@ int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     switch(cf->fpSize)
     {
         case 1:
-            success = cf_search_fp8(cf, hash, fpLong);
+            success = cf_search_fp8(cf, hash, fpLong & 0xff);
             break;
         case 2:
-            success = cf_search_fp16(cf, hash, fpLong);
+            success = cf_search_fp16(cf, hash, fpLong & 0xffff);
             break;
         case 4:
-            success = cf_search_fp32(cf, hash, fpLong);
+            success = cf_search_fp32(cf, hash, fpLong & 0xffffffff);
             break;
     }
 
@@ -396,6 +395,25 @@ int CFUtils_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
 
 
 #ifdef SELFTEST
+
+#define FNV_OFFSET 14695981039346656037ULL
+#define FNV_PRIME 1099511628211ULL
+#define FNV1A(h, x) (((h) ^ (x)) * FNV_PRIME)
+int CFFNV1a_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+    RedisModule_AutoMemory(ctx);
+    if (argc != 2) return RedisModule_WrongArity(ctx);
+
+    u64 fp;
+    RedisModule_StringToLongLong(argv[1], &fp);
+    u64 hash = FNV1A(FNV_OFFSET, fp);
+
+    printf("FNV: %llu\n", hash);
+
+    RedisModule_ReplyWithLongLong(ctx, hash);
+
+    return REDISMODULE_OK;
+}
+
 #include "../test/src/tests.c"
 int CFTest_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
     RedisModule_AutoMemory(ctx);
@@ -527,6 +545,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         return REDISMODULE_ERR;
     if (RedisModule_CreateCommand(ctx,"cf.rand",
         CFRand_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
+        return REDISMODULE_ERR;
+    if (RedisModule_CreateCommand(ctx,"cf.fnv",
+        CFFNV1a_RedisCommand,"readonly",0,0,0) == REDISMODULE_ERR)
         return REDISMODULE_ERR;
 #endif
 
