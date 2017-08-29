@@ -1,3 +1,42 @@
+-- 0.9
+	- Added fingerprint size option to `cf.init`
+		After some reasoning, I concluded that having the user choose
+		fingerprint size is the best choice in terms of API design. 
+		Users care about error rate but it is not possible to have them
+		directly decide it as it is the result of choosing fingerprint size
+		and bucket size, settings that in turn define many other performance
+		characteristics of the filter.
+		Considering Redis' nature and common usage patterns,
+		it's very important to keep the memory layout efficient in terms of 
+		access. This means having a few reasonably useful settings that allow
+		keeping all buckets word or half-word aligned.
+		A fpsize setting seems reasonable considering that users already
+		have to implement a fingerprinting function and should be well aware
+		of how long the fingerprint should be.
+		With this new setting, users can create a filter with 1, 2 or 4 bytes
+		long fingerprints which in turn cap the filter's error rate respectively
+		to 0.03, 0.0001 and 0.000000001.
+		The first error rate (0.03) is the point where Cuckoo filters become 
+		more efficient than Bloom filters, the others follow from doubling the 
+		fingerprint size. 
+		For 1 and 2 fingerprint size, bucket size is 4.
+		For 4, bucketsize is 2.
+		This makes all bucket fetches to be performed in a single word read.
+
+	- Added reference python implementation and testing 
+		Adding variable fingerprint size made the C code much more complex.
+		To keep reasonably well of what the code is supposed to be doing, I
+		wrote a pure python implementation that is both very easy to understand
+		and very slow. 
+		The standard selftest suite has been also adapted to the python code
+		and a "lockstep" testing methodology has devised: each test operation
+		applied to the Redis module is also applied to the python instance and
+		before proceeding to the next, both filters are serialized and confronted
+		to make sure all operations produce byte-by-byte equal results.
+		This test is very slow but ensures a reasonable certainty that the Python
+		and C code behave consistently. This paired with the fact that the Python
+		code is very easy to understand should help build and test new features in
+		the future.
 -- 0.2 
 	- Removed bucket size option from `cf.init`
 		The reasoning being that the option makes more sense once we decide that 
