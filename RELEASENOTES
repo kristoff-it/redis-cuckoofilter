@@ -37,6 +37,7 @@
 		and C code behave consistently. This paired with the fact that the Python
 		code is very easy to understand should help build and test new features in
 		the future.
+		
 -- 0.2 
 	- Removed bucket size option from `cf.init`
 		The reasoning being that the option makes more sense once we decide that 

@@ -9,7 +9,7 @@ jobs:
     steps:
       - checkout
       - run: apt-get update 
-      - run: apt-get install -y build-essential clang
+      - run: apt-get install -y build-essential clang ca-certificates
       - run: cd ~/project/src && make clean && make all CC=clang CFLAGS=-D=SELFTEST
       - run:
           name: Running Redis
@@ -21,3 +21,4 @@ jobs:
       - run: cd ~/project/src && make clean && make all
       - store_artifacts:
           path: ~/project/src/redis-cuckoofilter.so
+          destination: /
