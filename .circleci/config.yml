@@ -21,4 +21,3 @@ jobs:
       - run: cd ~/project/src && make clean && make all
       - store_artifacts:
           path: ~/project/src/redis-cuckoofilter.so
-          destination: /
