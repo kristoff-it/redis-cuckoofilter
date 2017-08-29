@@ -18,6 +18,7 @@ jobs:
       - run: sleep 3
       - run: redis-cli cf.selftest > test_result
       - run: "[[ $(< test_result) == OK ]]"
+       - run: cd ~/project/src && make clean && make all
       - store_artifacts:
           path: ~/project/src/redis-cuckoofilter.so
           destination: /
