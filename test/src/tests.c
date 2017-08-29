@@ -14,5 +14,5 @@ int RunAllTests(RedisModuleCtx *ctx) {
 }
 
 void CleanupAllTests(RedisModuleCtx *ctx) {
-	// cleanMainTest(ctx);
+	cleanMainTest(ctx);
 }

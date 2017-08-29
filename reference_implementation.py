@@ -40,15 +40,12 @@ void srand(int seed);
 """)
 
 C = ffi.dlopen(None)
-C.srand(42)
 
 
-def FNV1A(x, fpsize):
-    xbytes = list(x.to_bytes(4, "little"))
-
+def FNV1A(fp):
     h = 14695981039346656037
-    for i in range(fpsize):
-        h = (h ^ xbytes[i]) * 1099511628211
+    for byte in fp:
+        h = (h ^ byte) * 1099511628211
     return h & 0xffffffffffffffff
 
 
@@ -57,45 +54,47 @@ class RedisCuckooFilter:
         assert fpsize in [1,2,4]
         assert size % 2 == 0
 
+        C.srand(42)
+
         self.size = size
         self.fpSize = fpsize
+        self.zeroValue = b'\x00' * self.fpSize
 
-        bucket_generator = lambda: [0,0] if fpsize == 4 else [0,0,0,0]
-        bucketsize = 4
-        if fpsize != 1:
-            bucketsize = 8
+        bucket_generator = lambda: [self.zeroValue] * (2 if self.fpSize == 4 else 4)
+
+        bucketsize = 4 if fpsize == 1 else 8
 
         self.numBuckets = size//bucketsize
         self.filter = [bucket_generator() for _ in range(self.numBuckets)]
 
     def add(self, hashString, fpString):
         h = ctypes.c_ulonglong(int(hashString)).value % self.numBuckets
-        fp = ctypes.c_ulonglong(int(fpString)).value
+        fp = ctypes.c_ulonglong(int(fpString)).value.to_bytes(8, "little")[:self.fpSize]
+        if fp == self.zeroValue:
+            fp = ctypes.c_ulonglong(1).value.to_bytes(8, "little")[:self.fpSize]
 
         altH = self._alternative_hash(h, fp)
-            
-        if self._insert_fp(h, fp, None) or self._insert_fp(altH, fp, None):
+        if self._insert_fp(h, fp)[0] or self._insert_fp(altH, fp)[0]:
             return b"OK"
 
-        # This is used to mimic what in C would be passing a "OUT" parameter to
-        # a function (ie a pointer to write into).
-        homelessFPContainer = []
+        homelessFP = None
         homelessH = altH
 
         for _ in range(500):
-            self._insert_fp(homelessH, fp, homelessFPContainer)
-            if len(homelessFPContainer) == 0:
+            _, homelessFP = self._insert_fp(homelessH, fp, evict=True)
+            if homelessFP is None:
                 return b"OK"
 
-            homelessH = self._alternative_hash(homelessH, homelessFPContainer[0])
-            fp = homelessFPContainer[0]
-            homelessFPContainer = []
+            homelessH = self._alternative_hash(homelessH, homelessFP)
+            fp = homelessFP
 
         return b"ERR too full"
 
     def check(self, hashString, fpString):
         h = ctypes.c_ulonglong(int(hashString)).value % self.numBuckets
-        fp = ctypes.c_ulonglong(int(fpString)).value
+        fp = ctypes.c_ulonglong(int(fpString)).value.to_bytes(8, "little")[:self.fpSize]
+        if fp == self.zeroValue:
+            fp = ctypes.c_ulonglong(1).value.to_bytes(8, "little")[:self.fpSize]
 
         bucket = self._read_bucket(h)
         altbucket = self._read_bucket(self._alternative_hash(h, fp))
@@ -108,42 +107,43 @@ class RedisCuckooFilter:
 
     def rem(self, hashString, fpString):
         h = ctypes.c_ulonglong(int(hashString)).value % self.numBuckets
-        fp = ctypes.c_ulonglong(int(fpString)).value
+        fp = ctypes.c_ulonglong(int(fpString)).value.to_bytes(8, "little")[:self.fpSize]
+        if fp == self.zeroValue:
+            fp = ctypes.c_ulonglong(1).value.to_bytes(8, "little")[:self.fpSize]
 
         bucket = self._read_bucket(h)
         altbucket = self._read_bucket(self._alternative_hash(h, fp))
 
         if fp in bucket:
-            bucket[bucket.index(fp)] = 0
+            bucket[bucket.index(fp)] = self.zeroValue
             return b"OK"
 
         if fp in altbucket:
-            altbucket[altbucket.index(fp)] = 0
+            altbucket[altbucket.index(fp)] = self.zeroValue
             return b"OK"
 
-        return "ERR trying to delete non existing item. THE FILTER MIGHT BE CORRUPTED!"
+        return b"ERR trying to delete non existing item. THE FILTER MIGHT BE CORRUPTED!"
 
     def dump(self):
-        return bytes([x for bucket in self.filter for x in bucket])
+        return b''.join(fp for bucket in self.filter for fp in bucket)
 
     def _alternative_hash(self, h, fp):
-        return (h ^ FNV1A(fp, self.fpSize)) % self.numBuckets
+        return (h ^ FNV1A(fp)) % self.numBuckets
 
-    def _insert_fp(self, h, fp, homelessFPContainer):
+    def _insert_fp(self, h, fp, evict=False):
         bucket = self._read_bucket(h)
 
-        if 0 in bucket:
-            for i in range(len(bucket)):
-                if bucket[i] == 0:
-                    bucket[i] = fp
-                    return  True
+        if self.zeroValue in bucket:
+            bucket[bucket.index(self.zeroValue)] = fp
+            return  (True, None)
 
-        if homelessFPContainer is not None:
+        if evict:
             slot = C.rand() % (2 if self.fpSize == 4 else 4)
-            homelessFPContainer.append(bucket[slot])
+            evictedFP = bucket[slot]
             bucket[slot] = fp
-
-        return False
+            return (False, evictedFP)
+        else:
+            return (False, None)
 
     def _read_bucket(self, h):
         return self.filter[h]

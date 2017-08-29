@@ -18,7 +18,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 
 	printf("Loading initial items...\n");
 	// Load 62k items
-	for (int i = 0; i < 62000; i++)
+	for (int i = 0; i < TEST_DATA_LEN; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.ADD", "ccc", "__test-cuckoo-filter__", goodItemsH[i], goodItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
@@ -29,18 +29,22 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 // ------------------
 	printf("Checking...\n");
 	long long correctCount = 0;
-	for (int i = 0; i < 62000; i++)
+	for (int i = 0; i < TEST_DATA_LEN; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.CHECK", "ccc", "__test-cuckoo-filter__", goodItemsH[i], goodItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
-	        correctCount += RedisModule_CallReplyInteger(reply);
+	        int x = RedisModule_CallReplyInteger(reply);
+	        correctCount += x;
+	        if (x == 0){
+	        	printf("Got zero with %s %s", goodItemsH[i], goodItemsF[i]);
+	        }
 	    } else {
 	        printf("%s", RedisModule_CallReplyStringPtr(reply, NULL));
 	        return 1;
 	    }
 	}
-	printf("Recollection: %.4f%%\n", (correctCount/62000.0) * 100);
-	if ( correctCount == 62000 ) {
+	printf("Recollection: %.4f%%\n", (correctCount/(TEST_DATA_LEN * 1.0)) * 100);
+	if ( correctCount == TEST_DATA_LEN ) {
 	    printf("(TEST: PASSED)\n");
 	} else {
 	    printf("(TEST: FAILED)\n");
@@ -71,7 +75,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 
 // -----------
 	printf("Deleting half of the good items...\n");
-	for (int i = 0; i < 31000; i++)
+	for (int i = 0; i < TEST_DATA_LEN/2; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.REM", "ccc", "__test-cuckoo-filter__", deletedItemsH[i], deletedItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
@@ -81,7 +85,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 	}
 
 	wrongCount = 0;
-	for (int i = 0; i < 31000; i++)
+	for (int i = 0; i < TEST_DATA_LEN/2; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.CHECK", "ccc", "__test-cuckoo-filter__", deletedItemsH[i], deletedItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
@@ -92,7 +96,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 	        return 1;
 	    }
 	}
-	printf("Correctly forgotten (subject to false positive error): %.4f%%\n", ((31000 - wrongCount)/31000.0) * 100);
+	printf("Correctly forgotten (subject to false positive error): %.4f%%\n", (((TEST_DATA_LEN/2) - wrongCount)/(TEST_DATA_LEN * 1.0)) * 100);
 	if ( wrongCount < (950 * 2) ) {
 	    printf("(TEST: PASSED)\n");
 	} else {
@@ -103,7 +107,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 
 // ------------
 	printf("Adding those items back in...\n");
-	for (int i = 0; i < 31000; i++)
+	for (int i = 0; i < TEST_DATA_LEN/2; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.ADD", "ccc", "__test-cuckoo-filter__", deletedItemsH[i], deletedItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_ERROR) {
@@ -113,7 +117,7 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 	}
 	printf("Now checking if we still remember everything...\n");
 	correctCount = 0;
-	for (int i = 0; i < 62000; i++)
+	for (int i = 0; i < TEST_DATA_LEN; i++)
 	{
 	    reply = RedisModule_Call(ctx, "CF.CHECK", "ccc", "__test-cuckoo-filter__", goodItemsH[i], goodItemsF[i]);
 	    if (RedisModule_CallReplyType(reply) == REDISMODULE_REPLY_INTEGER) {
@@ -123,8 +127,8 @@ int mainTest(RedisModuleCtx *ctx, char * filterType, char * fpSize) {
 	        return 1;
 	    }
 	}
-	printf("Recollection: %.4f%%\n", (correctCount/62000.0) * 100);
-	if ( correctCount == 62000 ) {
+	printf("Recollection: %.4f%%\n", (correctCount/(TEST_DATA_LEN * 1.0)) * 100);
+	if ( correctCount == TEST_DATA_LEN ) {
 	    printf("(TEST: PASSED)\n");
 	} else {
 	    printf("(TEST: FAILED)\n");

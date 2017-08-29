@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include "headers/bit-fiddling.h"
+#include "headers/cuckoo-types.h"
 #include "headers/cuckoofilter.h"
 
 
@@ -48,11 +49,13 @@
  * Also, since numBuckets is a power of 2, it uses a bitwise and
  * instead of a modulo.
  */
+
 extern inline u64 cf_alternative_hash8 (CuckooFilter *cf, u64 hash, u8 fp) {
     return (hash ^ FNV1A(FNV_OFFSET, fp)) & (cf->numBuckets - 1);
 }
 extern inline u64 cf_alternative_hash16 (CuckooFilter *cf, u64 hash, u16 fp) {
-    return (hash ^ FNV1A(FNV1A(FNV_OFFSET, fp & 0xFF), fp >> 8)) & (cf->numBuckets - 1);
+    FP16 fpU = (FP16)fp;
+    return (hash ^ FNV1A(FNV1A(FNV_OFFSET, fpU.u8[0]), fpU.u8[1])) & (cf->numBuckets - 1);
 }
 extern inline u64 cf_alternative_hash32 (CuckooFilter *cf, u64 hash, u32 fp) {
     FP32 fpU = (FP32)fp;

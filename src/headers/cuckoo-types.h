@@ -22,6 +22,12 @@ typedef struct {
 
 typedef union
 {
+    u16 u16;
+    u8  u8[2];
+} FP16;
+
+typedef union
+{
     u32 u32;
     u16 u16[2];
     u8  u8[4];

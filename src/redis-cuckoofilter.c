@@ -164,17 +164,10 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         RedisModule_ReplyWithError(ctx,"ERR hash is not unsigned long long");\
         return REDISMODULE_OK;\
     }\
-    \
     if (RedisModule_StringToLongLong(argv[3], (i64*)&fpLong) != REDISMODULE_OK) {\
         RedisModule_ReplyWithError(ctx,"ERR invalid fprint value");\
         return REDISMODULE_OK;\
     }\
-    \
-    if (fpLong == 0)\
-    {\
-        fpLong = 1;\
-    }\
-    \
     key = RedisModule_OpenKey(ctx, argv[1], mode);\
     int type = RedisModule_KeyType(key);\
     if (type == REDISMODULE_KEYTYPE_EMPTY || RedisModule_ModuleTypeGetType(key) != CuckooFilterType)\
@@ -183,6 +176,27 @@ int CFInit_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
         return REDISMODULE_OK;\
     }\
     cf = (CuckooFilter*)RedisModule_ModuleTypeGetValue(key);\
+    switch(cf->fpSize)\
+    {\
+        case 1:\
+            if ((fpLong & 0xff) == 0)\
+            {\
+               fpLong = 1;\
+            }\
+            break;\
+        case 2:\
+            if ((fpLong & 0xffff) == 0)\
+            {\
+               fpLong = 1;\
+            }\
+            break;\
+        case 4:\
+            if ((fpLong & 0xffffffff) == 0)\
+            {\
+               fpLong = 1;\
+            }\
+            break;\
+    }\
     hash = hash & (cf->numBuckets - 1);\
 }
 
@@ -225,9 +239,8 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         } break;
         case 2:
         {
-            u16 fp = fpLong;
+            u16 fp = fpLong & 0xffff;
             u64 altHash = cf_alternative_hash16(cf, hash, fp);
-
             if (cf_insert_fp16(cf, hash, fp, NULL) || cf_insert_fp16(cf, altHash, fp, NULL)) 
             {
                 RedisModule_ReplyWithSimpleString(ctx, "OK");
@@ -237,12 +250,13 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
             u16 homelessFP = 0;
             u64 homelessHash = altHash;
             for (int n = 0; n < 500; n++) {
+
                 cf_insert_fp16(cf, homelessHash, fp, &homelessFP);
 
                 if (!homelessFP) {
                     RedisModule_ReplyWithSimpleString(ctx, "OK");
                     return REDISMODULE_OK;
-                } 
+                }
 
                 homelessHash = cf_alternative_hash16(cf, homelessHash, homelessFP);
                 fp = homelessFP;
@@ -251,7 +265,7 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         } break;
         case 4:
         {
-            u32 fp = fpLong;
+            u32 fp = fpLong & 0xffffffff;
             u64 altHash = cf_alternative_hash32(cf, hash, fp);
 
             if (cf_insert_fp32(cf, hash, fp, NULL) || cf_insert_fp32(cf, altHash, fp, NULL)) 
@@ -277,10 +291,11 @@ int CFAdd_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
         } break;
         default:
         {
-            RedisModule_ReplyWithError(ctx,"ERR too full");
-            return REDISMODULE_OK;
+
         }
     }
+    RedisModule_ReplyWithError(ctx,"ERR too full");
+    return REDISMODULE_OK;
 }
 
 
@@ -296,13 +311,13 @@ int CFRem_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     switch(cf->fpSize)
     {
         case 1:
-            success = cf_delete_fp8(cf, hash, fpLong);
+            success = cf_delete_fp8(cf, hash, (u8)fpLong);
             break;
         case 2:
-            success = cf_delete_fp16(cf, hash, fpLong);
+            success = cf_delete_fp16(cf, hash, (u16)fpLong);
             break;
         case 4:
-            success = cf_delete_fp32(cf, hash, fpLong);
+            success = cf_delete_fp32(cf, hash, (u32)fpLong);
             break;
     }
 
@@ -329,13 +344,13 @@ int CFCheck_RedisCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc
     switch(cf->fpSize)
     {
         case 1:
-            success = cf_search_fp8(cf, hash, fpLong & 0xff);
+            success = cf_search_fp8(cf, hash, (u8)fpLong);
             break;
         case 2:
-            success = cf_search_fp16(cf, hash, fpLong & 0xffff);
+            success = cf_search_fp16(cf, hash, (u16)fpLong);
             break;
         case 4:
-            success = cf_search_fp32(cf, hash, fpLong & 0xffffffff);
+            success = cf_search_fp32(cf, hash, (u32)fpLong);
             break;
     }
 
@@ -453,8 +468,11 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
     }
 
     CuckooFilter *cf = RedisModule_Alloc(sizeof(CuckooFilter));
+    cf->isMulti = RedisModule_LoadUnsigned(rdb);
+    cf->fpSize = RedisModule_LoadUnsigned(rdb);
     cf->filter = (u8*)RedisModule_LoadStringBuffer(rdb, &cf->numBuckets);
-    cf->numBuckets /= 8;
+    cf->numBuckets /= (cf->fpSize == 1 ? 4 : 8);
+
     return cf;
 
 }
@@ -462,7 +480,10 @@ void *CFLoad (RedisModuleIO *rdb, int encver)
 void CFSave (RedisModuleIO *rdb, void *value)
 {
     CuckooFilter *cf = value;
-    RedisModule_SaveStringBuffer(rdb, (const char *)cf->filter, cf->numBuckets * 8);
+    RedisModule_SaveUnsigned(rdb, cf->isMulti);
+    RedisModule_SaveUnsigned(rdb, cf->fpSize);
+    RedisModule_SaveStringBuffer(rdb, (const char *)cf->filter, 
+        cf->numBuckets * (cf->fpSize == 1 ? 4 : 8));
 }
 
 void CFRewrite (RedisModuleIO *aof, RedisModuleString *key, void *value)
