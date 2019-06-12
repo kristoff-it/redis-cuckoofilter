@@ -30,7 +30,7 @@
 		reproducible.
 
 	- Support for Redis Replication
-		With fully deterministic support it was not trivial to add support
+		With fully deterministic support it was now trivial to add support
 		for Redis replicas. Enjoy your now more resilient Cuckoo filters!
 
 	- Abandoned the idea of supporting resizing
