@@ -125,7 +125,7 @@ r.execute_command("cf.init", "test", "64k")
 
 # Define a fingerprinting function, for hashing we'll use python's builtin `hash()` 
 def fingerprint(x):
-  return ord(x[0]) # takes the first byte and returns it's numerical value
+  return ord(x[0]) # takes the first byte and returns its numerical value
 
 item = "banana"
 
@@ -145,22 +145,22 @@ In Cuckoo filters the number of bytes that we decide to use as fingerprint
 will directly impact the maximum false positive error rate of a given filter.
 This implementation supports 1, 2 and 4-byte wide fingerprints.
 
-## 1byte FP == 3% error
+### 1 (3% error)
 Error % -> `3.125e-02 (~0.03, i.e. 3%)`
 
-## 2byte FP == 0.01% error
+### 2 (0.01% error)
 Error % -> `1.22070312e-04 (~0.0001, i.e. 0.01%))`
 
-## 4byte FP == 0.0000001% error
+### 4 (0.0000001% error)
 Error % -> `9.31322574e-10 (~0.000000001, i.e. 0.0000001%)`
 
 
 Complete command list
 ---------------------
 
-## CF.SIZEFOR universe [fpsize] [EXACT]
-### Complexity: O(1)
-### Example: `CF.SIZEFOR 1000 2 EXACT`
+### CF.SIZEFOR universe [fpsize] [EXACT]
+#### Complexity: O(1)
+#### Example: `CF.SIZEFOR 1000 2 EXACT`
 Returns the correct size for a filter that must hold at most `universe` items.
 Default `fpsize` is 1, specify a different value if you need an error rate lower
 than 3%.
@@ -170,22 +170,22 @@ start refusing inserts with a `ERR too full` error.
 This command will automatically pad `universe` for you. Use `EXACT` if you don't want 
 that behavior.
 
-## CF.CAPACITY key
-### Complexity: O(1)
-### Example: `CF.CAPACITY mykey`
+### CF.CAPACITY key
+#### Complexity: O(1)
+#### Example: `CF.CAPACITY mykey`
 Returns the theoretical maximum number of items that can be added to the filter present
 at `key`. Does not include any padding.
 
-## CF.INIT key size [fpsize]
-### Complexity: O(size)
-### Example: `CF.INIT mykey 64K`
+### CF.INIT key size [fpsize]
+#### Complexity: O(size)
+#### Example: `CF.INIT mykey 64K`
 Instantiates a new filter. Use `CF.SIZEFOR` to know the correct value for `size`.
 Supported sizes are a power of 2 in this range: `1K .. 8G`.
 Default error rate is 3%, use `fpsize` to specify a different target error rate.
 
-## CF.ADD key hash fp
-### Complexity: O(1) 
-### Example `CF.ADD mykey 100 97`
+### CF.ADD key hash fp
+#### Complexity: O(1) 
+#### Example `CF.ADD mykey 100 97`
 Adds a new item to the filter. Both `hash` and `fp` must be numbers.
 In particular, `hash` has to be a 64bit representable number, while `fp`
 must be a `fpsize` representable number. As an example, a filter with 
@@ -199,9 +199,9 @@ Read the extented example in
   [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-## CF.REM key hash fp
-### Complexity: O(1)
-### Example `CF.REM mykey 100 97`
+### CF.REM key hash fp
+#### Complexity: O(1)
+#### Example `CF.REM mykey 100 97`
 Deletes an item. Accepts the same arguments as `CF.ADD`. 
 WARNING: this command must be used to only delete items that were
 previously inserted. Trying to delete non-existing items will corrupt the 
@@ -212,28 +212,28 @@ a usage error and should never happen. Read the extented example in
   [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-## CF.CHECK key hash fp
-### Complexity: O(1)
-### Example `CF.CHECK mykey 100 97`
+### CF.CHECK key hash fp
+#### Complexity: O(1)
+#### Example `CF.CHECK mykey 100 97`
 Checks if an item is present in the filter or not. Returns `1` for the 
 positive case and `0` otherwise. Accepts the same arguments as `CF.ADD`.
 
-## CF.COUNT key
-### Complexity: O(1)
-### Example: `CF.COUNT mykey`
+### CF.COUNT key
+#### Complexity: O(1)
+#### Example: `CF.COUNT mykey`
 Returns the number of items present in the filter.
 
-## CF.ISBROKEN key
-### Complexity: O(1)
-### Example: `CF.ISBROKEN mykey`
+### CF.ISBROKEN key
+#### Complexity: O(1)
+#### Example: `CF.ISBROKEN mykey`
 Returns `1` if the filter was broken because of misusage of `CF.REM`,
 returns `0` otherwise. A broken filter cannot be fixed and will start
 returning `ERR broken` from most comamnds.
 
 
-## CF.ISTOOFULL key
-### Complexity: O(1)
-### Example: `CF.ISTOOFULL mykey`
+### CF.ISTOOFULL key
+#### Complexity: O(1)
+#### Example: `CF.ISTOOFULL mykey`
 Returns `1` if the filter is too full, returns `0` otherwise.
 This command can return `1` even if you never received a 
 `ERR too full` from a call to `CF.ADD`. 
@@ -241,9 +241,9 @@ Read the extented example in
   [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-## CF.FIXTOOFULL key
-### Complexity: O(1) big constant
-### Example: `CF.FIXTOOFULL mykey`
+### CF.FIXTOOFULL key
+#### Complexity: O(1) big constant
+#### Example: `CF.FIXTOOFULL mykey`
 If you are adding and also **deleting** items from the filter
 but in a moment of *congestion* you ended up ovferfilling the filter,
 this command can help re-distribute some items to fix the situation.
@@ -275,12 +275,12 @@ Compiling
 ---------
 Download the latest Zig compiler version from http://ziglang.org.
 
-## To compile for your native platform
+### To compile for your native platform
 ```sh
 $ zig build-lib -dynamic -isystem src/lib --release-fast src/redis-cuckoofilter.zig
 ```
 
-## To cross-compile
+### To cross-compile
 ```sh
 $ zig build-lib -dynamic -isystem src/lib --release-fast -target x86_64-linux --library c src/redis-cuckoofilter.zig
 ```
