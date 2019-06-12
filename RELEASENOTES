@@ -1,3 +1,63 @@
+-- 1.0.0 
+	- Now viable for production
+		With the new features this release can be considered stable enough 
+		for production use.
+
+	- Complete rewrite of the module in Zig
+		Great improvement, nothing much else to say.
+
+	- Now using zig-cuckoofilter as backing library
+		zig-cuckoofilter is a production-ready, sans-io implementation 
+		of Cuckoo Filters written by me. Check it out if you need support
+		for Cuckoo Filters on the client-side. Works with any C ABI compatile
+		target (via both static and dynamic linking) or language (via CFFI).
+
+	- New APIs for humans to help you size the filter
+		Use CF.SIZEFOR and CF.CAPACITY to properly size the filter.
+		No more reading through the documentation to know how to 
+		properly configure your filters!
+
+	- New APIs
+		Check the README for a complete list of available commands.
+
+	- More flexible `hash` and `fp` parsing
+		You can now use both signed and unsigned representations without
+		any worry, as long as you are consistent. All values will be 
+		internally converted to unsigned.
+
+	- Fully deterministic support for insertions
+		Each key saves the state of the PRNG, making the insert history
+		reproducible.
+
+	- Support for Redis Replication
+		With fully deterministic support it was not trivial to add support
+		for Redis replicas. Enjoy your now more resilient Cuckoo filters!
+
+	- Abandoned the idea of supporting resizing
+		Resizing comes at a price and goes against both Redis' and this
+		module's philosophy. This module is for advanced users so you
+		are expected to know how to size a filter properly. If you are in a
+		situation where you prefer dynamic sizing, then it's up to you to
+		orchestrate multiple filters manually (which is the only option
+		and exactly what the library would have done for you). So you 
+		could start with one filter and then add more as more items come
+		in. You will have then to check all filters for presence, thus
+		changing the asymptotic properties of the resulting `MULTICHECK` 
+		operation.
+
+	- Abandoned the idea of supporting filters for multisets
+		Cuckoo Filters are mainly useful because they allow you to delete
+		items and I haven't found a semantically sound way of mixing 
+		deletions with multiset item-counting.
+
+	- Started investigating client-side libraries
+		Given that now the logic is bundled in zig-cuckoofilter and that
+		it can now be used by any C ABI compatible target (checkout the 
+		repo for examples in C, JS, Python and Go), combined with Streams
+		it would be possible to keep a client-side Cuckoo filter synced
+		with one in Redis, allowing clients to keep reads locally and 
+		asyncrhonously sync with Redis to obtain new updates to the filter.
+		
 -- 0.9
 	- Added fingerprint size option to `cf.init`
 		After some reasoning, I concluded that having the user choose

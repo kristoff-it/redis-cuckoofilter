@@ -1,7 +1,6 @@
-redis-cuckoofilter &middot; ![CircleCI Status](https://circleci.com/gh/kristoff-it/redis-cuckoofilter.svg?style=shield&circle-token=:circle-token)
+redis-cuckoofilter
 ==================
 Hashing-function agnostic Cuckoo filters for Redis
-
 
 
 What's a Cuckoo Filter?
@@ -24,8 +23,6 @@ Some extensions of Bloom filters have the ability of deleting items but they
 achieve so at the expense of precision or memory usage, resulting in a far worse 
 tradeoff compared to what Cuckoo filters offer.
 
-For more information consult
-[the project's wiki](https://github.com/kristoff-it/redis-cuckoofilter/wiki/1.-Cuckoo-VS-Bloom).
 
 What Makes This Redis Module Interesting
 ----------------------------------------
@@ -35,7 +32,7 @@ clients.
 Since Cuckoo filters rely on a single hashing of the original item you want to 
 insert, it is possible to off-load that part of the computation to the client. 
 In practical terms it means that instead of sending the whole item to Redis, the
-clients send `{hash, fingerprint}` of the original item.
+clients send `hash` and `fingeprint` of the original item.
 
 ### What are the advantages of doing so?
 	
@@ -60,7 +57,7 @@ platforms.
 [This blogpost](http://aras-p.info/blog/2016/08/09/More-Hash-Function-Tests/) 
 shows a few benchmarks of different hashing function families.
 
-Considering all of that, the choice of `{hashing func, fingerprinting func}` has 
+Considering all of that, the choice of hashing and fingerprinting functions has 
 to be up to you.
 
 *For the internal partial hashing that has to happen when reallocating a 
@@ -70,37 +67,35 @@ for 1 byte inputs (the size of a fingerprint).*
 *Thanks to how Cuckoo filters work, that choice is completely transparent to the 
 clients.*
 
-If you know how Cuckoo filters work and are interested in knowing the implementation
-details of this module, please consult
-[the project's wiki](https://github.com/kristoff-it/redis-cuckoofilter/wiki/2.-Implementation-details).
-
-
 Installation 
 ------------
 
 1. Download a precompiled binary from the 
    [Release section](https://github.com/kristoff-it/redis-cuckoofilter/releases/) 
-   of this repo or compile with `make all` (linux and osx supported)
+   of this repo or compile it yourself (instructions at the end of this README).
 
-2. Put the `redis-cuckoofilter.so` module in a folder readable by your Redis 
-   installation
+2. Put `libredis-cuckoofilter.so` module in a folder readable by your Redis 
+   server.
 
 3. To try out the module you can send 
-   `MODULE LOAD /path/to/redis-cuckoofilter.so` using redis-cli or a client of 
-   your choice
+   `MODULE LOAD /path/to/libredis-cuckoofilter.so` using redis-cli or a client of 
+   your choice.
 
 4. Once you save on disk a key containing a Cuckoo filter you will need to add 
-   `loadmodule /path/to/redis-cuckoofilter.so` to your `redis.conf`, otherwise 
+   `loadmodule /path/to/libredis-cuckoofilter.so` to your `redis.conf`, otherwise 
    Redis will not load complaining that it doesn't know how to read some data 
    from the `.rdb` file.
 
 
-Usage Example
--------------
+Quickstart
+----------
 
 ```
+redis-cli> MODULE LOAD /path/to/libredis-cuckoofilter.so
+OK
+
 redis-cli> CF.INIT test 64K
-(integer) 65536
+OK 
  
 redis-cli> CF.ADD test 5366164415461427448 97
 OK
@@ -115,38 +110,188 @@ redis-cli> CF.CHECK test 5366164415461427448 97
 (integer) 0
 ```
 
-You can find the complete command list on
-[the project's wiki](https://github.com/kristoff-it/redis-cuckoofilter/wiki/4.-Module-Commands-(API)).
+Client-side quickstart
+----------------------
+```python
+import redis
+
+r = redis.Redis()
+
+# Load the module if you haven't done so already
+r.execute_command("module", "load", "/path/to/libredis-cuckoofilter.so")
+
+# Create a filter
+r.execute_command("cf.init", "test", "64k")
+
+# Define a fingerprinting function, for hashing we'll use python's builtin `hash()` 
+def fingerprint(x):
+  return ord(x[0]) # takes the first byte and returns it's numerical value
+
+item = "banana"
+
+# Add an item to the filter
+r.execute_command("cf.add", hash(item), fingerprint(item))
+
+# Check for its presence
+r.execute_command("cf.check", hash(item), finterprint(item)) # => true
+
+# Check for a non-existing item
+r.execute_command("cf.check", hash("apple"), fingerprint("apple")) # => false
+```
+
+Fingerprint size and error rates
+--------------------------------
+In Cuckoo filters the number of bytes that we decide to use as fingerprint
+will directly impact the maximum false positive error rate of a given filter.
+This implementation supports 1, 2 and 4-byte wide fingerprints.
+
+## 1byte FP == 3% error
+Error % -> `3.125e-02 (~0.03, i.e. 3%)`
+
+## 2byte FP == 0.01% error
+Error % -> `1.22070312e-04 (~0.0001, i.e. 0.01%))`
+
+## 4byte FP == 0.0000001% error
+Error % -> `9.31322574e-10 (~0.000000001, i.e. 0.0000001%)`
 
 
-Choosing the right settings
----------------------------
-Consult [the project's wiki](https://github.com/kristoff-it/redis-cuckoofilter/wiki/3.-SIZE,-FPSIZE-and-Error-Rate).
+Complete command list
+---------------------
+
+## CF.SIZEFOR universe [fpsize] [EXACT]
+### Complexity: O(1)
+### Example: `CF.SIZEFOR 1000 2 EXACT`
+Returns the correct size for a filter that must hold at most `universe` items.
+Default `fpsize` is 1, specify a different value if you need an error rate lower
+than 3%.
+Cuckoo filters should never be filled over 80% of their maximum theoretical capacity
+both for performance reasons and because a filter that approaces 100% fill rate will
+start refusing inserts with a `ERR too full` error.
+This command will automatically pad `universe` for you. Use `EXACT` if you don't want 
+that behavior.
+
+## CF.CAPACITY key
+### Complexity: O(1)
+### Example: `CF.CAPACITY mykey`
+Returns the theoretical maximum number of items that can be added to the filter present
+at `key`. Does not include any padding.
+
+## CF.INIT key size [fpsize]
+### Complexity: O(size)
+### Example: `CF.INIT mykey 64K`
+Instantiates a new filter. Use `CF.SIZEFOR` to know the correct value for `size`.
+Supported sizes are a power of 2 in this range: `1K .. 8G`.
+Default error rate is 3%, use `fpsize` to specify a different target error rate.
+
+## CF.ADD key hash fp
+### Complexity: O(1) 
+### Example `CF.ADD mykey 100 97`
+Adds a new item to the filter. Both `hash` and `fp` must be numbers.
+In particular, `hash` has to be a 64bit representable number, while `fp`
+must be a `fpsize` representable number. As an example, a filter with 
+`fpsize` set to `1` will cause the maximum valid value of `fp` to be `255`.
+You can use both signed and unsigned values as long as you are consistent
+in their use. Internally all values will be transalted to unsigned.
+If a filter is undersized/overfilled or you are adding multiple copies of 
+the same item or, worse, you're not properely handling information entropy, 
+this command will return `ERR too full`.
+Read the extented example in 
+  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+to learn more about misusage scenarios.
+
+## CF.REM key hash fp
+### Complexity: O(1)
+### Example `CF.REM mykey 100 97`
+Deletes an item. Accepts the same arguments as `CF.ADD`. 
+WARNING: this command must be used to only delete items that were
+previously inserted. Trying to delete non-existing items will corrupt the 
+filter and cause it to lockdown. When that happens all command will start
+returning `ERR broken`, because at that point it will be impossible to 
+know what the correct state would be. Incurring in `ERR broken` is 
+a usage error and should never happen. Read the extented example in 
+  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+to learn more about misusage scenarios.
+
+## CF.CHECK key hash fp
+### Complexity: O(1)
+### Example `CF.CHECK mykey 100 97`
+Checks if an item is present in the filter or not. Returns `1` for the 
+positive case and `0` otherwise. Accepts the same arguments as `CF.ADD`.
+
+## CF.COUNT key
+### Complexity: O(1)
+### Example: `CF.COUNT mykey`
+Returns the number of items present in the filter.
+
+## CF.ISBROKEN key
+### Complexity: O(1)
+### Example: `CF.ISBROKEN mykey`
+Returns `1` if the filter was broken because of misusage of `CF.REM`,
+returns `0` otherwise. A broken filter cannot be fixed and will start
+returning `ERR broken` from most comamnds.
 
 
-Testing 
--------
+## CF.ISTOOFULL key
+### Complexity: O(1)
+### Example: `CF.ISTOOFULL mykey`
+Returns `1` if the filter is too full, returns `0` otherwise.
+This command can return `1` even if you never received a 
+`ERR too full` from a call to `CF.ADD`. 
+Read the extented example in 
+  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+to learn more about misusage scenarios.
 
-You can find how to run tests on
-[the project's wiki](https://github.com/kristoff-it/redis-cuckoofilter/wiki/5.-Testing).
+## CF.FIXTOOFULL key
+### Complexity: O(1) big constant
+### Example: `CF.FIXTOOFULL mykey`
+If you are adding and also **deleting** items from the filter
+but in a moment of *congestion* you ended up ovferfilling the filter,
+this command can help re-distribute some items to fix the situation.
+It's not a command you should ever rely on because it should never 
+be needed if you properly sized your filter using `CF.SIZEFOR`.
+Read the extented example in 
+  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+to learn more about misusage scenarios.
+
+Advanced usage
+--------------
+Checkout 
+  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+for more information about advanced usage of Cuckoo filters and 
+how to deal (and most importantly, prevent) failure scenarios.
 
 Planned Features
 ----------------
 
-- Cuckoo filters for multisets: currently you can add a maximum of 
-  `2 * bucketsize` copies of the same element before getting a `too full` error. 
-  Making a filter that adds a counter for each bucketslot would create a filter 
-  specifically designed for handling multisets. 
+- Advanced client-side syncrhonization
+    Given that now the logic is bundled in zig-cuckoofilter and that
+    it can now be used by any C ABI compatible target (checkout the 
+    repo for examples in C, JS, Python and Go), combined with Streams
+    it would be possible to keep a client-side Cuckoo filter synced
+    with one in Redis, allowing clients to keep reads locally and 
+    asyncrhonously sync with Redis to obtain new updates to the filter.
 
-- Dynamic Cuckoo filters: resize instead of failing with `too full`
+Compiling 
+---------
+Download the latest Zig compiler version from http://ziglang.org.
 
+## To compile for your native platform
+```sh
+$ zig build-lib -dynamic -isystem src/lib --release-fast src/redis-cuckoofilter.zig
+```
+
+## To cross-compile
+```sh
+$ zig build-lib -dynamic -isystem src/lib --release-fast -target x86_64-linux --library c src/redis-cuckoofilter.zig
+```
+Use `zig targets` for the complete list of available targets.
 
 License
 -------
 
 MIT License
 
-Copyright (c) 2017 Loris Cro
+Copyright (c) 2019 Loris Cro
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
