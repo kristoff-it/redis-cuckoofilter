@@ -196,7 +196,7 @@ If a filter is undersized/overfilled or you are adding multiple copies of
 the same item or, worse, you're not properely handling information entropy, 
 this command will return `ERR too full`.
 Read the extented example in 
-  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+  [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
 ### CF.REM key hash fp
@@ -209,7 +209,7 @@ filter and cause it to lockdown. When that happens all command will start
 returning `ERR broken`, because at that point it will be impossible to 
 know what the correct state would be. Incurring in `ERR broken` is 
 a usage error and should never happen. Read the extented example in 
-  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+  [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
 ### CF.CHECK key hash fp
@@ -238,7 +238,7 @@ Returns `1` if the filter is too full, returns `0` otherwise.
 This command can return `1` even if you never received a 
 `ERR too full` from a call to `CF.ADD`. 
 Read the extented example in 
-  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+  [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
 ### CF.FIXTOOFULL key
@@ -250,13 +250,13 @@ this command can help re-distribute some items to fix the situation.
 It's not a command you should ever rely on because it should never 
 be needed if you properly sized your filter using `CF.SIZEFOR`.
 Read the extented example in 
-  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+  [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
 Advanced usage
 --------------
 Checkout 
-  [kristoff-it/zig-cuckoofilter](/kristoff-it/zig-cuckoofilter) 
+  [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 for more information about advanced usage of Cuckoo filters and 
 how to deal (and most importantly, prevent) failure scenarios.
 
