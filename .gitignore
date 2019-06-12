@@ -61,3 +61,4 @@ dkms.conf
 *.pyc
 .cache/v/cache/lastfailed
 redis-cuckoofilter.h
+*.zip

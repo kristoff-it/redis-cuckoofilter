@@ -158,7 +158,7 @@ Error % -> `9.31322574e-10 (~0.000000001, i.e. 0.0000001%)`
 Complete command list
 ---------------------
 
-### CF.SIZEFOR universe [fpsize] [EXACT]
+### - `CF.SIZEFOR universe [fpsize] [EXACT]`
 #### Complexity: O(1)
 #### Example: `CF.SIZEFOR 1000 2 EXACT`
 Returns the correct size for a filter that must hold at most `universe` items.
@@ -170,20 +170,20 @@ start refusing inserts with a `ERR too full` error.
 This command will automatically pad `universe` for you. Use `EXACT` if you don't want 
 that behavior.
 
-### CF.CAPACITY key
+### - `CF.CAPACITY key`
 #### Complexity: O(1)
 #### Example: `CF.CAPACITY mykey`
 Returns the theoretical maximum number of items that can be added to the filter present
 at `key`. Does not include any padding.
 
-### CF.INIT key size [fpsize]
+### - `CF.INIT key size [fpsize]`
 #### Complexity: O(size)
 #### Example: `CF.INIT mykey 64K`
 Instantiates a new filter. Use `CF.SIZEFOR` to know the correct value for `size`.
 Supported sizes are a power of 2 in this range: `1K .. 8G`.
 Default error rate is 3%, use `fpsize` to specify a different target error rate.
 
-### CF.ADD key hash fp
+### - `CF.ADD key hash fp`
 #### Complexity: O(1) 
 #### Example `CF.ADD mykey 100 97`
 Adds a new item to the filter. Both `hash` and `fp` must be numbers.
@@ -199,7 +199,7 @@ Read the extented example in
   [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-### CF.REM key hash fp
+### - `CF.REM key hash fp`
 #### Complexity: O(1)
 #### Example `CF.REM mykey 100 97`
 Deletes an item. Accepts the same arguments as `CF.ADD`. 
@@ -212,18 +212,18 @@ a usage error and should never happen. Read the extented example in
   [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-### CF.CHECK key hash fp
+### - `CF.CHECK key hash fp`
 #### Complexity: O(1)
 #### Example `CF.CHECK mykey 100 97`
 Checks if an item is present in the filter or not. Returns `1` for the 
 positive case and `0` otherwise. Accepts the same arguments as `CF.ADD`.
 
-### CF.COUNT key
+### - `CF.COUNT key`
 #### Complexity: O(1)
 #### Example: `CF.COUNT mykey`
 Returns the number of items present in the filter.
 
-### CF.ISBROKEN key
+### - `CF.ISBROKEN key`
 #### Complexity: O(1)
 #### Example: `CF.ISBROKEN mykey`
 Returns `1` if the filter was broken because of misusage of `CF.REM`,
@@ -231,7 +231,7 @@ returns `0` otherwise. A broken filter cannot be fixed and will start
 returning `ERR broken` from most comamnds.
 
 
-### CF.ISTOOFULL key
+### - `CF.ISTOOFULL key`
 #### Complexity: O(1)
 #### Example: `CF.ISTOOFULL mykey`
 Returns `1` if the filter is too full, returns `0` otherwise.
@@ -241,7 +241,7 @@ Read the extented example in
   [kristoff-it/zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter) 
 to learn more about misusage scenarios.
 
-### CF.FIXTOOFULL key
+### - `CF.FIXTOOFULL key`
 #### Complexity: O(1) big constant
 #### Example: `CF.FIXTOOFULL mykey`
 If you are adding and also **deleting** items from the filter
