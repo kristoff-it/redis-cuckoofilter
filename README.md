@@ -277,12 +277,12 @@ Download the latest Zig compiler version from http://ziglang.org.
 
 ### To compile for your native platform
 ```sh
-$ zig build-lib -dynamic -isystem src/lib --release-fast src/redis-cuckoofilter.zig
+$ zig build-lib -dynamic -isystem src --release-fast src/redis-cuckoofilter.zig
 ```
 
 ### To cross-compile
 ```sh
-$ zig build-lib -dynamic -isystem src/lib --release-fast -target x86_64-linux --library c src/redis-cuckoofilter.zig
+$ zig build-lib -dynamic -isystem src --release-fast -target x86_64-linux --library c src/redis-cuckoofilter.zig
 ```
 Use `zig targets` for the complete list of available targets.
 
