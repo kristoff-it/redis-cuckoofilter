@@ -130,7 +130,7 @@ def fingerprint(x):
 item = "banana"
 
 # Add an item to the filter
-r.execute_command("cf.add", hash(item), fingerprint(item))
+r.execute_command("cf.add", "test", hash(item), fingerprint(item))
 
 # Check for its presence
 r.execute_command("cf.check", "test", hash(item), finterprint(item)) # => true
@@ -188,8 +188,12 @@ Default error rate is 3%, use `fpsize` to specify a different target error rate.
 #### Example `CF.ADD mykey 100 97`
 Adds a new item to the filter. Both `hash` and `fp` must be numbers.
 In particular, `hash` has to be a 64bit representable number, while `fp`
-must be a `fpsize` representable number. As an example, a filter with 
-`fpsize` set to `1` will cause the maximum valid value of `fp` to be `255`.
+should be a `fpsize` representable number. As an example, a filter with 
+`fpsize` set to `1` will cause the maximum recommended value of `fp` to be `255`.
+The `fp` argument is a `u32` so `(2^32)-1` is its maximum valid value, but when
+`fpsize` is lower than `4`, high bits will be truncated (e.g. `-1 == 255` when 
+`fpsize == 1`).
+
 You can use both signed and unsigned values as long as you are consistent
 in their use. Internally all values will be transalted to unsigned.
 If a filter is undersized/overfilled or you are adding multiple copies of 

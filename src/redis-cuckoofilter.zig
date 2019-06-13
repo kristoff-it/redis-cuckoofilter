@@ -107,26 +107,25 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     // Parse hash as u64
     var hash_len: usize = undefined;
     var hash_str = redis.RedisModule_StringPtrLen.?(argv[2], &hash_len);
-    hash.* = std.fmt.parseInt(u64, hash_str[0..hash_len], 10) catch |err| {
+    hash.* = @bitCast(u64, std.fmt.parseInt(i64, hash_str[0..hash_len], 10) catch |err| {
         _ = switch (err) {
             error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash overflows u64"),
             error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash contains bad character"),
         };
         return error.Error;
-    };
+    });
 
     // Parse fp as u32
     var fp_len: usize = undefined;
     var fp_str = redis.RedisModule_StringPtrLen.?(argv[3], &fp_len);
-    fp.* = std.fmt.parseInt(u32, fp_str[0..fp_len], 10) catch |err| {
+    fp.* = @bitCast(u32, std.fmt.parseInt(i32, fp_str[0..fp_len], 10) catch |err| {
         _ = switch (err) {
             error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp overflows u32"),
             error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp contains bad character"),
         };
         return error.Error;
-    };
+    });
 }
-
 
 // Registers the module and its commands.
 export fn RedisModule_OnLoad(ctx: *redis.RedisModuleCtx, argv: [*c]*redis.RedisModuleString, argc: c_int) c_int {
@@ -140,8 +139,8 @@ export fn RedisModule_OnLoad(ctx: *redis.RedisModuleCtx, argv: [*c]*redis.RedisM
     // Register our commands
     registerCommand(ctx, c"cf.init",       CF_INIT,       c"write deny-oom", 1, 1, 1) catch return redis.REDISMODULE_ERR;
     registerCommand(ctx, c"cf.rem",        CF_REM,        c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.add",        CF_ADD,        c"write fast random", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.fixtoofull", CF_FIXTOOFULL, c"write fast random", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, c"cf.add",        CF_ADD,        c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, c"cf.fixtoofull", CF_FIXTOOFULL, c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
     registerCommand(ctx, c"cf.check",      CF_CHECK,      c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
     registerCommand(ctx, c"cf.count",      CF_COUNT,      c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
     registerCommand(ctx, c"cf.isbroken",   CF_ISBROKEN,   c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
