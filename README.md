@@ -1,6 +1,7 @@
 redis-cuckoofilter
 ==================
-Hashing-function agnostic Cuckoo filters for Redis
+Hashing-function agnostic Cuckoo filters for Redis based on 
+	[zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter).
 
 
 What's a Cuckoo Filter?
