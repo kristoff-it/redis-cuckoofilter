@@ -1,3 +1,9 @@
+-- 1.0.1
+	- Fix parsing of negative hash/fp
+	- Remove `random` attribute to write commands
+		Forgot to do that in the previous release, where insertion became fully 
+		deterministic.
+		
 -- 1.0.0 
 	- Now viable for production
 		With the new features this release can be considered stable enough 
