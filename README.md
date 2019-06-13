@@ -133,10 +133,10 @@ item = "banana"
 r.execute_command("cf.add", hash(item), fingerprint(item))
 
 # Check for its presence
-r.execute_command("cf.check", hash(item), finterprint(item)) # => true
+r.execute_command("cf.check", "test", hash(item), finterprint(item)) # => true
 
 # Check for a non-existing item
-r.execute_command("cf.check", hash("apple"), fingerprint("apple")) # => false
+r.execute_command("cf.check", "test", hash("apple"), fingerprint("apple")) # => false
 ```
 
 Fingerprint size and error rates
