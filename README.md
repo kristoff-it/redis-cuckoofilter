@@ -1,8 +1,18 @@
-redis-cuckoofilter
-==================
-Hashing-function agnostic Cuckoo filters for Redis based on 
-	[zig-cuckoofilter](https://github.com/kristoff-it/zig-cuckoofilter).
 
+<h1 align="center">redis-cuckoofilter</h1>
+<p align="center">
+    <a href="https://github.com/kristoff-it/redis-cuckoofilter/releases/latest"><img src="https://badgen.net/github/release/kristoff-it/redis-cuckoofilter"/></a>
+    <a href="LICENSE.md"><img src="https://badgen.net/github/license/kristoff-it/zig-cuckoofilter" /></a>
+    <a href="https://twitter.com/croloris"><img src="https://badgen.net/badge/twitter/@croloris/1DA1F2?icon&label" /></a>
+</p>
+
+<p align="center">
+	Hashing-function agnostic Cuckoo filters for Redis.
+</p>
+
+Based on
+--------
+[![kristoff-it/zig-cuckoofilter - GitHub](https://gh-card.dev/repos/kristoff-it/zig-cuckoofilter.svg)](https://github.com/kristoff-it/zig-cuckoofilter)
 
 What's a Cuckoo Filter?
 -----------------------
