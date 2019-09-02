@@ -1,3 +1,9 @@
+-- 1.1.0
+	- Fix bug that made fingerprints 1byte long even when specifying otherwise
+	  (thanks @migolovanov).
+	- Make negative hash/fp finally work as intented: if the value is negative
+	  it gets casted to unsigned and 2complement is applied.
+	  
 -- 1.0.1
 	- Fix parsing of negative hash/fp
 	- Remove `random` attribute to write commands
