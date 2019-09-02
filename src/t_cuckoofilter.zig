@@ -16,14 +16,13 @@ pub const Filter8 = struct {
 
 pub const Filter16 = struct {
     s: [2]u64,
-    cf: cuckoo.Filter8,
+    cf: cuckoo.Filter16,
 };
 
 pub const Filter32 = struct {
     s: [2]u64,
-    cf: cuckoo.Filter8,
+    cf: cuckoo.Filter32,
 };
-
 
 pub fn RegisterTypes(ctx: *redis.RedisModuleCtx) !void {
 
