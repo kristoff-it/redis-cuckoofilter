@@ -105,24 +105,52 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     // Parse hash as u64
     var hash_len: usize = undefined;
     var hash_str = redis.RedisModule_StringPtrLen.?(argv[2], &hash_len);
-    hash.* = @bitCast(u64, std.fmt.parseInt(i64, hash_str[0..hash_len], 10) catch |err| {
+    var hash_start: usize = 0;
+    if (hash_len > 0 and hash_str[0] == '-') {
+        // Shift forward by 1 to skip the negative sign
+        hash_start = 1;
+    }
+
+    hash.* = std.fmt.parseInt(u64, hash_str[hash_start..hash_len], 10) catch |err| {
         _ = switch (err) {
             error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash overflows u64"),
             error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash contains bad character"),
         };
         return error.Error;
-    });
+    };
+
+    // The hash was a negative number
+    if (hash_start == 1) {
+        hash.* = std.math.sub(u64, std.math.maxInt(u64), hash.*) catch {
+            _ = redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash underflows u64");
+            return error.Error;
+        };
+    }
 
     // Parse fp as u32
     var fp_len: usize = undefined;
     var fp_str = redis.RedisModule_StringPtrLen.?(argv[3], &fp_len);
-    fp.* = @bitCast(u32, std.fmt.parseInt(i32, fp_str[0..fp_len], 10) catch |err| {
+    var fp_start: usize = 0;
+    if (fp_len > 0 and fp_str[0] == '-') {
+        // Shift forward by 1 to skip the negative sign
+        fp_start = 1;
+    }
+
+    fp.* = @bitCast(u32, std.fmt.parseInt(i32, fp_str[fp_start..fp_len], 10) catch |err| {
         _ = switch (err) {
             error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp overflows u32"),
             error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp contains bad character"),
         };
         return error.Error;
     });
+
+    // The fp was a negative number
+    if (fp_start == 1) {
+        fp.* = std.math.sub(u32, std.math.maxInt(u32), fp.*) catch {
+            _ = redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp underflows u32");
+            return error.Error;
+        };
+    }
 }
 
 // Registers the module and its commands.
