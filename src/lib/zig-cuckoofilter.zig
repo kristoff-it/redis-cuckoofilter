@@ -25,18 +25,17 @@ pub fn set_default_prng_state(s: [2]u64) void {
 // Useful in adversarial situations (CSPRNG) or when you need deterministic behavior
 // from the filter, as it requires to be able to save and restore the PRNG's state.
 // You can use Filter<X>.RandomFn to see the function type you need to fulfill.
-fn XoroRandFnImpl (comptime T: type) type {
+fn XoroRandFnImpl(comptime T: type) type {
     return struct {
-        fn random () T {
+        fn random() T {
             return xoro.random.int(T);
         }
     };
 }
 
-
 // Supported CuckooFilter implementations.
 // Bucket size is chosen mainly to keep the bucket 64bit word-sized, or under.
-// This way reading a bucket requires a single memory fetch. 
+// This way reading a bucket requires a single memory fetch.
 // Filter8 does not have 8-fp wide buckets to keep the error rate under 3%,
 // as this is the cutoff point where Cuckoo Filters become more space-efficient
 // than Bloom. We also enforce memory alignment.
@@ -47,7 +46,7 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
     return struct {
         homeless_fp: Tfp,
         homeless_bucket_idx: usize,
-        buckets: [] align(Align) Bucket,
+        buckets: []align(Align) Bucket,
         fpcount: usize,
         broken: bool,
         rand_fn: ?RandomFn,
@@ -80,21 +79,21 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
         }
 
         pub fn capacity(size: usize) usize {
-            return size / @sizeOf(Tfp); 
+            return size / @sizeOf(Tfp);
         }
 
         // Use bytesToBuckets when you have persisted the filter and need to restore it.
         // This will allow to cast back your bytes slice in the correct type for the .buckets
         // property. Make sure you still have the right alignment when loading the data back!
-        pub fn bytesToBuckets(memory: [] align(Align) u8) ![] align(Align) Bucket {
+        pub fn bytesToBuckets(memory: []align(Align) u8) ![]align(Align) Bucket {
             const not_pow2 = memory.len != std.math.pow(usize, 2, std.math.log2(memory.len));
             if (not_pow2 or memory.len < MinSize) return error.BadLength;
             return @bytesToSlice(Bucket, memory);
         }
 
-        pub fn init(memory: [] align(Align) u8) !Self {
+        pub fn init(memory: []align(Align) u8) !Self {
             for (memory) |*x| x.* = 0;
-            return Self {
+            return Self{
                 .homeless_fp = FREE_SLOT,
                 .homeless_bucket_idx = undefined,
                 .buckets = try bytesToBuckets(memory),
@@ -115,14 +114,13 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
             // Try primary bucket
             if (fp == self.scan(bucket_idx, fp, .Search, FREE_SLOT)) return true;
 
-            // Try alt bucket  
+            // Try alt bucket
             const alt_bucket_idx = self.compute_alt_bucket_idx(bucket_idx, fp);
             if (fp == self.scan(alt_bucket_idx, fp, .Search, FREE_SLOT)) return true;
-            
+
             // Try homeless slot
-            return if (self.is_homeless_fp(bucket_idx, alt_bucket_idx, fp)) true
-            else if (self.broken) error.Broken else false;
-        }   
+            return if (self.is_homeless_fp(bucket_idx, alt_bucket_idx, fp)) true else if (self.broken) error.Broken else false;
+        }
 
         pub fn remove(self: *Self, hash: u64, fingerprint: Tfp) !void {
             if (self.broken) return error.Broken;
@@ -143,7 +141,7 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
             }
 
             // Try homeless slot
-            if (self.is_homeless_fp(bucket_idx, alt_bucket_idx, fp)){
+            if (self.is_homeless_fp(bucket_idx, alt_bucket_idx, fp)) {
                 self.homeless_fp = FREE_SLOT;
                 self.fpcount -= 1;
                 return;
@@ -171,14 +169,14 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
                 if (FREE_SLOT == self.scan(alt_bucket_idx, FREE_SLOT, .Set, fp)) {
                     self.fpcount += 1;
                     return;
-                } else return error.TooFull;            
+                } else return error.TooFull;
             }
 
             // We are now willing to force the insertion
             self.homeless_bucket_idx = alt_bucket_idx;
             self.homeless_fp = fp;
             self.fpcount += 1;
-            var i : usize = 0;
+            var i: usize = 0;
             while (i < 500) : (i += 1) {
                 self.homeless_bucket_idx = self.compute_alt_bucket_idx(self.homeless_bucket_idx, self.homeless_fp);
                 self.homeless_fp = self.scan(self.homeless_bucket_idx, FREE_SLOT, .Force, self.homeless_fp);
@@ -196,8 +194,7 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
         }
 
         pub fn fix_toofull(self: *Self) !void {
-            if (FREE_SLOT == self.homeless_fp) return
-            else {
+            if (FREE_SLOT == self.homeless_fp) return else {
                 const homeless_fp = self.homeless_fp;
                 self.homeless_fp = FREE_SLOT;
                 try self.add(self.homeless_bucket_idx, homeless_fp);
@@ -218,7 +215,7 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
             const FNV_PRIME = 1099511628211;
 
             // Note: endianess
-            const bytes = @ptrCast(*const [fpSize] u8, &fp).*;
+            const bytes = @ptrCast(*const [fpSize]u8, &fp).*;
             var res: usize = FNV_OFFSET;
 
             comptime var i = 0;
@@ -264,7 +261,7 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
 }
 
 test "Hx == (Hy XOR hash(fp))" {
-    var memory: [1<<20]u8 align(Filter8.Align) = undefined;
+    var memory: [1 << 20]u8 align(Filter8.Align) = undefined;
     var cf = Filter8.init(memory[0..]) catch unreachable;
     testing.expect(0 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx(0, 'x'), 'x'));
     testing.expect(1 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx(1, 'x'), 'x'));
@@ -274,7 +271,7 @@ test "Hx == (Hy XOR hash(fp))" {
     testing.expect(10585 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx(10585, 'x'), 'x'));
     testing.expect(10586 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx(10586, 'x'), 'x'));
     testing.expect(18028 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx(18028, 'x'), 'x'));
-    testing.expect((1<<15) - 1 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx((1<<15) - 1, 'x'), 'x'));
+    testing.expect((1 << 15) - 1 == cf.compute_alt_bucket_idx(cf.compute_alt_bucket_idx((1 << 15) - 1, 'x'), 'x'));
 }
 
 fn test_not_broken(cf: var) void {
@@ -296,17 +293,16 @@ test "is not completely broken" {
     test_not_broken(&cf);
 }
 
-
 const Version = struct {
     Tfp: type,
     buckLen: usize,
     cftype: type,
 };
 
-const SupportedVersions = []Version {
-    Version { .Tfp = u8,  .buckLen = 4, .cftype = Filter8},
-    Version { .Tfp = u16, .buckLen = 4, .cftype = Filter16},
-    Version { .Tfp = u32, .buckLen = 2, .cftype = Filter32},
+const SupportedVersions = []Version{
+    Version{ .Tfp = u8, .buckLen = 4, .cftype = Filter8 },
+    Version{ .Tfp = u16, .buckLen = 4, .cftype = Filter16 },
+    Version{ .Tfp = u32, .buckLen = 2, .cftype = Filter32 },
 };
 
 test "generics are not completely broken" {
@@ -327,12 +323,12 @@ test "too full when adding too many copies" {
         }
 
         testing.expect(!cf.is_toofull());
-        
+
         // The first time we go over-board we can still occupy
         // the homeless slot, so this won't fail:
         cf.add(0, 1) catch unreachable;
         testing.expect(cf.is_toofull());
-        
+
         // We now are really full.
         testing.expectError(error.TooFull, cf.add(0, 1));
         testing.expect(cf.is_toofull());
@@ -340,7 +336,7 @@ test "too full when adding too many copies" {
         testing.expect(cf.is_toofull());
         testing.expectError(error.TooFull, cf.add(0, 1));
         testing.expect(cf.is_toofull());
-        
+
         i = 0;
         while (i < v.buckLen * 2) : (i += 1) {
             cf.add(2, 1) catch unreachable;
@@ -404,10 +400,10 @@ fn TestSet(comptime Tfp: type) type {
         fn init(iterations: usize, false_positives: usize, allocator: *std.mem.Allocator) Self {
             var item_set = ItemSet.init(allocator);
             var false_set = ItemSet.init(allocator);
-    
-            return Self {
+
+            return Self{
                 .items = blk: {
-                    var i : usize = 0;
+                    var i: usize = 0;
                     while (i < iterations) : (i += 1) {
                         var hash = xoro.random.int(u64);
                         while (item_set.contains(hash)) {
@@ -419,7 +415,7 @@ fn TestSet(comptime Tfp: type) type {
                 },
 
                 .false_positives = blk: {
-                    var i : usize = 0;
+                    var i: usize = 0;
                     while (i < false_positives) : (i += 1) {
                         var hash = xoro.random.int(u64);
                         while (item_set.contains(hash) or false_set.contains(hash)) {
@@ -437,7 +433,7 @@ fn TestSet(comptime Tfp: type) type {
 test "small stress test" {
     const iterations = 60000;
     const false_positives = 10000;
-    
+
     var direct_allocator = std.heap.DirectAllocator.init();
     //defer direct_allocator.deinit();
     inline for (SupportedVersions) |v| {
@@ -448,9 +444,9 @@ test "small stress test" {
         //defer test_cases.false_positives.deinit();
 
         // Build an appropriately-sized filter
-        var memory: [v.cftype.size_for(iterations)]u8 align(v.cftype.Align)= undefined;
+        var memory: [v.cftype.size_for(iterations)]u8 align(v.cftype.Align) = undefined;
         var cf = v.cftype.init(memory[0..]) catch unreachable;
-        
+
         // Test all items for presence (should all be false)
         {
             iit.reset();
@@ -505,7 +501,7 @@ test "small stress test" {
                 testing.expect(cf.maybe_contains(item.key, item.value) catch unreachable);
                 cf.remove(item.key, item.value) catch unreachable;
                 testing.expect(iterations - count == cf.count() catch unreachable);
-                if(cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
+                if (cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
             }
             testing.expect(false_count < @divTrunc(iterations, 40)); // < 2.5%
 
@@ -516,17 +512,17 @@ test "small stress test" {
                 count += 1;
                 if (count >= max) break;
 
-                if(cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
+                if (cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
             }
             testing.expect(false_count < @divTrunc(iterations, 40)); // < 2.5%
         }
 
-        // Test false positive elements 
+        // Test false positive elements
         {
             fit.reset();
             var false_count: usize = 0;
             while (fit.next()) |item| {
-                if(cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
+                if (cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
             }
             testing.expect(false_count < @divTrunc(iterations, 40)); // < 2.5%
         }
@@ -551,7 +547,7 @@ test "small stress test" {
             fit.reset();
             var false_count: usize = 0;
             while (fit.next()) |item| {
-                if(cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
+                if (cf.maybe_contains(item.key, item.value) catch unreachable) false_count += 1;
             }
             testing.expect(false_count < @divTrunc(iterations, 40)); // < 2.5%
         }

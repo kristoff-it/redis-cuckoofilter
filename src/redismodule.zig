@@ -1,3 +1,3 @@
-pub use @cImport({
+pub usingnamespace @cImport({
     @cInclude("./lib/redismodule.h");
 });

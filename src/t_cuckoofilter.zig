@@ -63,23 +63,29 @@ pub fn RegisterTypes(ctx: *redis.RedisModuleCtx) !void {
     if (Type32 == null) return error.RegisterError;
 }
 
-export fn CFLoad8 (rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void { return CFLoadImpl(Filter8,  rdb, encver); }
-export fn CFLoad16(rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void { return CFLoadImpl(Filter16, rdb, encver); }
-export fn CFLoad32(rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void { return CFLoadImpl(Filter32, rdb, encver); }
-inline fn CFLoadImpl (comptime CFType: type, rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void {
+export fn CFLoad8(rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void {
+    return CFLoadImpl(Filter8, rdb, encver);
+}
+export fn CFLoad16(rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void {
+    return CFLoadImpl(Filter16, rdb, encver);
+}
+export fn CFLoad32(rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void {
+    return CFLoadImpl(Filter32, rdb, encver);
+}
+inline fn CFLoadImpl(comptime CFType: type, rdb: ?*redis.RedisModuleIO, encver: c_int) ?*c_void {
     if (encver != CUCKOO_FILTER_ENCODING_VERSION) {
-         // We should actually log an error here, or try to implement
-         // the ability to load older versions of our data structure. 
+        // We should actually log an error here, or try to implement
+        // the ability to load older versions of our data structure.
         return null;
     }
 
     // Allocate cf struct
     var cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_Alloc.?(@sizeOf(CFType))));
 
-    // Load 
+    // Load
     const realCFType = @typeOf(cf.cf);
-    cf.* = CFType {
-        .s = [2]u64{redis.RedisModule_LoadUnsigned.?(rdb), redis.RedisModule_LoadUnsigned.?(rdb)},
+    cf.* = CFType{
+        .s = [2]u64{ redis.RedisModule_LoadUnsigned.?(rdb), redis.RedisModule_LoadUnsigned.?(rdb) },
         .cf = realCFType{
             .rand_fn = null,
             .homeless_fp = @intCast(realCFType.FPType, redis.RedisModule_LoadUnsigned.?(rdb)),
@@ -91,16 +97,22 @@ inline fn CFLoadImpl (comptime CFType: type, rdb: ?*redis.RedisModuleIO, encver:
                 const buckets_ptr = @alignCast(@alignOf(usize), redis.RedisModule_LoadStringBuffer.?(rdb, &bytes_len))[0..bytes_len];
                 break :blk realCFType.bytesToBuckets(buckets_ptr) catch @panic("trying to load corrupted buckets from RDB!");
             },
-        }, 
+        },
     };
 
     return cf;
 }
 
-export fn CFSave8 (rdb: ?*redis.RedisModuleIO, value: ?*c_void) void { CFSaveImpl(Filter8,  rdb, value); }
-export fn CFSave16(rdb: ?*redis.RedisModuleIO, value: ?*c_void) void { CFSaveImpl(Filter16, rdb, value); }
-export fn CFSave32(rdb: ?*redis.RedisModuleIO, value: ?*c_void) void { CFSaveImpl(Filter32, rdb, value); }
-inline fn CFSaveImpl (comptime CFType: type, rdb: ?*redis.RedisModuleIO, value: ?*c_void) void {
+export fn CFSave8(rdb: ?*redis.RedisModuleIO, value: ?*c_void) void {
+    CFSaveImpl(Filter8, rdb, value);
+}
+export fn CFSave16(rdb: ?*redis.RedisModuleIO, value: ?*c_void) void {
+    CFSaveImpl(Filter16, rdb, value);
+}
+export fn CFSave32(rdb: ?*redis.RedisModuleIO, value: ?*c_void) void {
+    CFSaveImpl(Filter32, rdb, value);
+}
+inline fn CFSaveImpl(comptime CFType: type, rdb: ?*redis.RedisModuleIO, value: ?*c_void) void {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), value));
 
     // Write cuckoo struct data
@@ -109,36 +121,43 @@ inline fn CFSaveImpl (comptime CFType: type, rdb: ?*redis.RedisModuleIO, value: 
     redis.RedisModule_SaveUnsigned.?(rdb, cf.cf.homeless_fp);
     redis.RedisModule_SaveUnsigned.?(rdb, cf.cf.homeless_bucket_idx);
     redis.RedisModule_SaveUnsigned.?(rdb, cf.cf.fpcount);
-    if (cf.cf.broken) redis.RedisModule_SaveUnsigned.?(rdb, 1)
-    else redis.RedisModule_SaveUnsigned.?(rdb, 0);
+    if (cf.cf.broken) redis.RedisModule_SaveUnsigned.?(rdb, 1) else redis.RedisModule_SaveUnsigned.?(rdb, 0);
 
     // Write buckets
     const bytes = @sliceToBytes(cf.cf.buckets);
     redis.RedisModule_SaveStringBuffer.?(rdb, bytes.ptr, bytes.len);
 }
 
-export fn CFFree8 (cf: ?*c_void) void { CFFreeImpl(Filter8,  cf); }
-export fn CFFree16(cf: ?*c_void) void { CFFreeImpl(Filter16, cf); }
-export fn CFFree32(cf: ?*c_void) void { CFFreeImpl(Filter32, cf); }
-inline fn CFFreeImpl (comptime CFType: type, value: ?*c_void) void {
+export fn CFFree8(cf: ?*c_void) void {
+    CFFreeImpl(Filter8, cf);
+}
+export fn CFFree16(cf: ?*c_void) void {
+    CFFreeImpl(Filter16, cf);
+}
+export fn CFFree32(cf: ?*c_void) void {
+    CFFreeImpl(Filter32, cf);
+}
+inline fn CFFreeImpl(comptime CFType: type, value: ?*c_void) void {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), value));
     redis.RedisModule_Free.?(cf.cf.buckets.ptr);
     redis.RedisModule_Free.?(cf);
 }
 
-export fn CFMemUsage8 (value: ?*const c_void) usize { return CFMemUsageImpl(Filter8, value); }
-export fn CFMemUsage16(value: ?*const c_void) usize { return CFMemUsageImpl(Filter16, value); }
-export fn CFMemUsage32(value: ?*const c_void) usize { return CFMemUsageImpl(Filter32, value); }
-inline fn CFMemUsageImpl (comptime CFType: type, value: ?*const c_void) usize {
+export fn CFMemUsage8(value: ?*const c_void) usize {
+    return CFMemUsageImpl(Filter8, value);
+}
+export fn CFMemUsage16(value: ?*const c_void) usize {
+    return CFMemUsageImpl(Filter16, value);
+}
+export fn CFMemUsage32(value: ?*const c_void) usize {
+    return CFMemUsageImpl(Filter32, value);
+}
+inline fn CFMemUsageImpl(comptime CFType: type, value: ?*const c_void) usize {
     const cf = @ptrCast(*const CFType, @alignCast(@alignOf(usize), value));
     const realCFType = @typeOf(cf.cf);
     return @sizeOf(CFType) + (@sliceToBytes(cf.cf.buckets).len * @sizeOf(realCFType.FPType));
 }
 
-export fn CFRewrite (aof: ?*redis.RedisModuleIO, key: ?*redis.RedisModuleString, value: ?*c_void) void {
+export fn CFRewrite(aof: ?*redis.RedisModuleIO, key: ?*redis.RedisModuleString, value: ?*c_void) void {}
 
-}
-
-export fn CFDigest(digest: ?*redis.RedisModuleDigest, value: ?*c_void) void {
-
-}
+export fn CFDigest(digest: ?*redis.RedisModuleDigest, value: ?*c_void) void {}
