@@ -1,7 +1,7 @@
 -- 1.1.1
 	- Update documentation for CF.CAPACITY as it was out of sync with the code.
 	- Bundled a new build of the binaries in the release. Apparently I failed to
-	  included up-to-date binaries in the latest release, leaving surprise bugs 
+	  include up-to-date binaries in the latest release, leaving surprise bugs 
 	  for unsuspecting users (thanks @shahasim).
 
 -- 1.1.0
