@@ -178,11 +178,12 @@ start refusing inserts with a `ERR too full` error.
 This command will automatically pad `universe` for you. Use `EXACT` if you don't want 
 that behavior.
 
-### - `CF.CAPACITY key`
+### - `CF.CAPACITY size [fpsize]`
 #### Complexity: O(1)
-#### Example: `CF.CAPACITY mykey`
-Returns the theoretical maximum number of items that can be added to the filter present
-at `key`. Does not include any padding.
+#### Example: `CF.CAPACITY 4G 2`
+Returns the theoretical maximum number of items that can be added to a filter of given
+`size` and `fpsize`. Default `fpsize` is 1.
+
 
 ### - `CF.INIT key size [fpsize]`
 #### Complexity: O(size)
