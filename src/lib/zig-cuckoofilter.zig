@@ -52,11 +52,21 @@ fn CuckooFilter(comptime Tfp: type, comptime buckSize: usize) type {
         rand_fn: ?RandomFn,
 
         pub const FPType = Tfp;
-        pub const Align = std.math.min(@alignOf(usize), @alignOf(@IntType(false, buckSize * @typeInfo(Tfp).Int.bits)));
+        pub const Align = std.math.min(@alignOf(usize), @alignOf(@Type(builtin.TypeInfo{
+            .Int = .{
+                .is_signed = false,
+                .bits = buckSize * @typeInfo(Tfp).Int.bits,
+            },
+        })));
         pub const MaxError = 2.0 * @intToFloat(f32, buckSize) / @intToFloat(f32, 1 << @typeInfo(Tfp).Int.bits);
         pub const RandomFn = fn () BucketSizeType;
 
-        const BucketSizeType = @IntType(false, comptime std.math.log2(buckSize));
+        const BucketSizeType = @Type(builtin.TypeInfo{
+            .Int = .{
+                .is_signed = false,
+                .bits = comptime std.math.log2(buckSize),
+            },
+        });
         const Bucket = [buckSize]Tfp;
         const MinSize = @sizeOf(Tfp) * buckSize * 2;
         const Self = @This();

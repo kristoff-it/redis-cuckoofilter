@@ -1,3 +1,5 @@
+const std = @import("std");
+const mem = std.mem;
 const cuckoo = @import("./lib/zig-cuckoofilter.zig");
 const redis = @import("./redismodule.zig");
 
@@ -27,7 +29,7 @@ pub const Filter32 = struct {
 pub fn RegisterTypes(ctx: *redis.RedisModuleCtx) !void {
 
     // 8 bit fingerprint
-    Type8 = redis.RedisModule_CreateDataType.?(ctx, c"ccf-kff-1", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
+    Type8 = redis.RedisModule_CreateDataType.?(ctx, "ccf-kff-1", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
         .version = redis.REDISMODULE_TYPE_METHOD_VERSION,
         .rdb_load = CFLoad8,
         .rdb_save = CFSave8,
@@ -39,7 +41,7 @@ pub fn RegisterTypes(ctx: *redis.RedisModuleCtx) !void {
     if (Type8 == null) return error.RegisterError;
 
     // 16 bit fingerprint
-    Type16 = redis.RedisModule_CreateDataType.?(ctx, c"ccf-kff-2", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
+    Type16 = redis.RedisModule_CreateDataType.?(ctx, "ccf-kff-2", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
         .version = redis.REDISMODULE_TYPE_METHOD_VERSION,
         .rdb_load = CFLoad16,
         .rdb_save = CFSave16,
@@ -51,7 +53,7 @@ pub fn RegisterTypes(ctx: *redis.RedisModuleCtx) !void {
     if (Type16 == null) return error.RegisterError;
 
     // 32 bit fingerprint
-    Type32 = redis.RedisModule_CreateDataType.?(ctx, c"ccf-kff-4", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
+    Type32 = redis.RedisModule_CreateDataType.?(ctx, "ccf-kff-4", CUCKOO_FILTER_ENCODING_VERSION, &redis.RedisModuleTypeMethods{
         .version = redis.REDISMODULE_TYPE_METHOD_VERSION,
         .rdb_load = CFLoad32,
         .rdb_save = CFSave32,
@@ -83,7 +85,7 @@ inline fn CFLoadImpl(comptime CFType: type, rdb: ?*redis.RedisModuleIO, encver: 
     var cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_Alloc.?(@sizeOf(CFType))));
 
     // Load
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
     cf.* = CFType{
         .s = [2]u64{ redis.RedisModule_LoadUnsigned.?(rdb), redis.RedisModule_LoadUnsigned.?(rdb) },
         .cf = realCFType{
@@ -124,7 +126,7 @@ inline fn CFSaveImpl(comptime CFType: type, rdb: ?*redis.RedisModuleIO, value: ?
     if (cf.cf.broken) redis.RedisModule_SaveUnsigned.?(rdb, 1) else redis.RedisModule_SaveUnsigned.?(rdb, 0);
 
     // Write buckets
-    const bytes = @sliceToBytes(cf.cf.buckets);
+    const bytes = mem.sliceAsBytes(cf.cf.buckets);
     redis.RedisModule_SaveStringBuffer.?(rdb, bytes.ptr, bytes.len);
 }
 
@@ -154,8 +156,8 @@ export fn CFMemUsage32(value: ?*const c_void) usize {
 }
 inline fn CFMemUsageImpl(comptime CFType: type, value: ?*const c_void) usize {
     const cf = @ptrCast(*const CFType, @alignCast(@alignOf(usize), value));
-    const realCFType = @typeOf(cf.cf);
-    return @sizeOf(CFType) + (@sliceToBytes(cf.cf.buckets).len * @sizeOf(realCFType.FPType));
+    const realCFType = @TypeOf(cf.cf);
+    return @sizeOf(CFType) + (mem.sliceAsBytes(cf.cf.buckets).len * @sizeOf(realCFType.FPType));
 }
 
 export fn CFRewrite(aof: ?*redis.RedisModuleIO, key: ?*redis.RedisModuleString, value: ?*c_void) void {}

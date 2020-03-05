@@ -113,8 +113,8 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
 
     hash.* = std.fmt.parseInt(u64, hash_str[hash_start..hash_len], 10) catch |err| {
         _ = switch (err) {
-            error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash overflows u64"),
-            error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash contains bad character"),
+            error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, "ERR hash overflows u64"),
+            error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, "ERR hash contains bad character"),
         };
         return error.Error;
     };
@@ -122,7 +122,7 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     // The hash was a negative number
     if (hash_start == 1) {
         hash.* = std.math.sub(u64, std.math.maxInt(u64), hash.*) catch {
-            _ = redis.RedisModule_ReplyWithError.?(ctx, c"ERR hash underflows u64");
+            _ = redis.RedisModule_ReplyWithError.?(ctx, "ERR hash underflows u64");
             return error.Error;
         };
     }
@@ -138,8 +138,8 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
 
     fp.* = @bitCast(u32, std.fmt.parseInt(i32, fp_str[fp_start..fp_len], 10) catch |err| {
         _ = switch (err) {
-            error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp overflows u32"),
-            error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp contains bad character"),
+            error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, "ERR fp overflows u32"),
+            error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, "ERR fp contains bad character"),
         };
         return error.Error;
     });
@@ -147,7 +147,7 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     // The fp was a negative number
     if (fp_start == 1) {
         fp.* = std.math.sub(u32, std.math.maxInt(u32), fp.*) catch {
-            _ = redis.RedisModule_ReplyWithError.?(ctx, c"ERR fp underflows u32");
+            _ = redis.RedisModule_ReplyWithError.?(ctx, "ERR fp underflows u32");
             return error.Error;
         };
     }
@@ -155,7 +155,7 @@ inline fn parse_args(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
 
 // Registers the module and its commands.
 export fn RedisModule_OnLoad(ctx: *redis.RedisModuleCtx, argv: [*c]*redis.RedisModuleString, argc: c_int) c_int {
-    if (redis.RedisModule_Init(ctx, c"cuckoofilter", 1, redis.REDISMODULE_APIVER_1) == redis.REDISMODULE_ERR) {
+    if (redis.RedisModule_Init(ctx, "cuckoofilter", 1, redis.REDISMODULE_APIVER_1) == redis.REDISMODULE_ERR) {
         return redis.REDISMODULE_ERR;
     }
 
@@ -163,16 +163,16 @@ export fn RedisModule_OnLoad(ctx: *redis.RedisModuleCtx, argv: [*c]*redis.RedisM
     t_ccf.RegisterTypes(ctx) catch return redis.REDISMODULE_ERR;
 
     // Register our commands
-    registerCommand(ctx, c"cf.init", CF_INIT, c"write deny-oom", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.rem", CF_REM, c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.add", CF_ADD, c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.fixtoofull", CF_FIXTOOFULL, c"write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.check", CF_CHECK, c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.count", CF_COUNT, c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.isbroken", CF_ISBROKEN, c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.istoofull", CF_ISTOOFULL, c"readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.capacity", CF_CAPACITY, c"fast allow-loading allow-stale", 0, 0, 0) catch return redis.REDISMODULE_ERR;
-    registerCommand(ctx, c"cf.sizefor", CF_SIZEFOR, c"fast allow-loading allow-stale", 0, 0, 0) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.init", CF_INIT, "write deny-oom", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.rem", CF_REM, "write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.add", CF_ADD, "write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.fixtoofull", CF_FIXTOOFULL, "write fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.check", CF_CHECK, "readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.count", CF_COUNT, "readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.isbroken", CF_ISBROKEN, "readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.istoofull", CF_ISTOOFULL, "readonly fast", 1, 1, 1) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.capacity", CF_CAPACITY, "fast allow-loading allow-stale", 0, 0, 0) catch return redis.REDISMODULE_ERR;
+    registerCommand(ctx, "cf.sizefor", CF_SIZEFOR, "fast allow-loading allow-stale", 0, 0, 0) catch return redis.REDISMODULE_ERR;
 
     return redis.REDISMODULE_OK;
 }
@@ -189,7 +189,7 @@ export fn CF_INIT(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStri
     // size argument
     var size_len: usize = undefined;
     const size_str = redis.RedisModule_StringPtrLen.?(argv[2], &size_len)[0..size_len];
-    const size = str2size(size_str) catch return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad size");
+    const size = str2size(size_str) catch return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad size");
 
     // fpsize argument
     var fp_size = "1"[0..];
@@ -203,25 +203,25 @@ export fn CF_INIT(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStri
     defer redis.RedisModule_CloseKey.?(key);
 
     var keyType = redis.RedisModule_KeyType.?(key);
-    if (keyType != redis.REDISMODULE_KEYTYPE_EMPTY) return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key already exists");
+    if (keyType != redis.REDISMODULE_KEYTYPE_EMPTY) return redis.RedisModule_ReplyWithError.?(ctx, "ERR key already exists");
 
     // New Cuckoo Filter!
-    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize");
+    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize");
     return switch (fp_size[0]) {
         '1' => do_init(t_ccf.Filter8, ctx, key, size),
         '2' => do_init(t_ccf.Filter16, ctx, key, size),
         '4' => do_init(t_ccf.Filter32, ctx, key, size),
-        else => return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize"),
+        else => return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize"),
     };
 }
 
 inline fn do_init(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey, size: usize) c_int {
     var cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_Alloc.?(@sizeOf(CFType))));
     var buckets = @ptrCast([*]u8, @alignCast(@alignOf(usize), redis.RedisModule_Alloc.?(size)));
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
 
     cf.s = XoroDefaultState;
-    cf.cf = realCFType.init(buckets[0..size]) catch return redis.RedisModule_ReplyWithError.?(ctx, c"ERR could not create filter");
+    cf.cf = realCFType.init(buckets[0..size]) catch return redis.RedisModule_ReplyWithError.?(ctx, "ERR could not create filter");
 
     switch (CFType) {
         t_ccf.Filter8 => _ = redis.RedisModule_ModuleTypeSetValue.?(key, t_ccf.Type8, cf),
@@ -231,7 +231,7 @@ inline fn do_init(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*red
     }
 
     _ = redis.RedisModule_ReplicateVerbatim.?(ctx);
-    return redis.RedisModule_ReplyWithSimpleString.?(ctx, c"OK");
+    return redis.RedisModule_ReplyWithSimpleString.?(ctx, "OK");
 }
 
 // CF.ADD key hash fp
@@ -244,7 +244,7 @@ export fn CF_ADD(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStrin
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_add(t_ccf.Filter8, ctx, key, hash, fp) else if (keyType == t_ccf.Type16) do_add(t_ccf.Filter16, ctx, key, hash, fp) else if (keyType == t_ccf.Type32) do_add(t_ccf.Filter32, ctx, key, hash, fp) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -252,7 +252,7 @@ export fn CF_ADD(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStrin
 
 inline fn do_add(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey, hash: u64, fp: u32) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
     cuckoo.set_default_prng_state(cf.s);
     defer {
         cf.s = cuckoo.get_default_prng_state();
@@ -260,10 +260,10 @@ inline fn do_add(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redi
 
     _ = redis.RedisModule_ReplicateVerbatim.?(ctx);
     return if (cf.cf.add(hash, @truncate(realCFType.FPType, fp)))
-        redis.RedisModule_ReplyWithSimpleString.?(ctx, c"OK")
+        redis.RedisModule_ReplyWithSimpleString.?(ctx, "OK")
     else |err| switch (err) {
-        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, c"ERR filter is broken"),
-        error.TooFull => redis.RedisModule_ReplyWithError.?(ctx, c"ERR too full"),
+        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, "ERR filter is broken"),
+        error.TooFull => redis.RedisModule_ReplyWithError.?(ctx, "ERR too full"),
     };
 }
 
@@ -277,7 +277,7 @@ export fn CF_CHECK(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStr
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_check(t_ccf.Filter8, ctx, key, hash, fp) else if (keyType == t_ccf.Type16) do_check(t_ccf.Filter16, ctx, key, hash, fp) else if (keyType == t_ccf.Type32) do_check(t_ccf.Filter32, ctx, key, hash, fp) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -285,11 +285,11 @@ export fn CF_CHECK(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStr
 
 inline fn do_check(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey, hash: u64, fp: u32) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
     return if (cf.cf.maybe_contains(hash, @truncate(realCFType.FPType, fp))) |maybe_found|
-        redis.RedisModule_ReplyWithSimpleString.?(ctx, if (maybe_found) c"1" else c"0")
+        redis.RedisModule_ReplyWithSimpleString.?(ctx, if (maybe_found) "1" else "0")
     else |err| switch (err) {
-        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, c"ERR filter is broken"),
+        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, "ERR filter is broken"),
     };
 }
 
@@ -303,7 +303,7 @@ export fn CF_REM(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStrin
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_rem(t_ccf.Filter8, ctx, key, hash, fp) else if (keyType == t_ccf.Type16) do_rem(t_ccf.Filter16, ctx, key, hash, fp) else if (keyType == t_ccf.Type32) do_rem(t_ccf.Filter32, ctx, key, hash, fp) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -311,13 +311,13 @@ export fn CF_REM(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStrin
 
 inline fn do_rem(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey, hash: u64, fp: u32) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
 
     _ = redis.RedisModule_ReplicateVerbatim.?(ctx);
     return if (cf.cf.remove(hash, @truncate(realCFType.FPType, fp)))
-        redis.RedisModule_ReplyWithSimpleString.?(ctx, c"OK")
+        redis.RedisModule_ReplyWithSimpleString.?(ctx, "OK")
     else |err| switch (err) {
-        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, c"ERR filter is broken"),
+        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, "ERR filter is broken"),
     };
 }
 
@@ -329,7 +329,7 @@ export fn CF_FIXTOOFULL(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModu
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_fixtoofull(t_ccf.Filter8, ctx, key) else if (keyType == t_ccf.Type16) do_fixtoofull(t_ccf.Filter16, ctx, key) else if (keyType == t_ccf.Type32) do_fixtoofull(t_ccf.Filter32, ctx, key) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -337,7 +337,7 @@ export fn CF_FIXTOOFULL(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModu
 
 inline fn do_fixtoofull(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    const realCFType = @typeOf(cf.cf);
+    const realCFType = @TypeOf(cf.cf);
     cuckoo.set_default_prng_state(cf.s);
     defer {
         cf.s = cuckoo.get_default_prng_state();
@@ -345,10 +345,10 @@ inline fn do_fixtoofull(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key:
 
     _ = redis.RedisModule_ReplicateVerbatim.?(ctx);
     return if (cf.cf.fix_toofull())
-        redis.RedisModule_ReplyWithSimpleString.?(ctx, c"OK")
+        redis.RedisModule_ReplyWithSimpleString.?(ctx, "OK")
     else |err| switch (err) {
-        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, c"ERR filter is broken"),
-        error.TooFull => redis.RedisModule_ReplyWithError.?(ctx, c"ERR too full"),
+        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, "ERR filter is broken"),
+        error.TooFull => redis.RedisModule_ReplyWithError.?(ctx, "ERR too full"),
     };
 }
 
@@ -360,7 +360,7 @@ export fn CF_COUNT(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleStr
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_count(t_ccf.Filter8, ctx, key) else if (keyType == t_ccf.Type16) do_count(t_ccf.Filter16, ctx, key) else if (keyType == t_ccf.Type32) do_count(t_ccf.Filter32, ctx, key) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -371,7 +371,7 @@ inline fn do_count(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*re
     return if (cf.cf.count()) |count|
         redis.RedisModule_ReplyWithLongLong.?(ctx, @intCast(c_longlong, count))
     else |err| switch (err) {
-        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, c"ERR filter is broken"),
+        error.Broken => redis.RedisModule_ReplyWithError.?(ctx, "ERR filter is broken"),
     };
 }
 
@@ -383,7 +383,7 @@ export fn CF_ISTOOFULL(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModul
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_istoofull(t_ccf.Filter8, ctx, key) else if (keyType == t_ccf.Type16) do_istoofull(t_ccf.Filter16, ctx, key) else if (keyType == t_ccf.Type32) do_istoofull(t_ccf.Filter32, ctx, key) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -391,7 +391,7 @@ export fn CF_ISTOOFULL(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModul
 
 inline fn do_istoofull(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    return redis.RedisModule_ReplyWithSimpleString.?(ctx, if (cf.cf.is_toofull()) c"1" else c"0");
+    return redis.RedisModule_ReplyWithSimpleString.?(ctx, if (cf.cf.is_toofull()) "1" else "0");
 }
 
 // CF.ISBROKEN key
@@ -402,7 +402,7 @@ export fn CF_ISBROKEN(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModule
     defer redis.RedisModule_CloseKey.?(key);
 
     if (redis.RedisModule_KeyType.?(key) == redis.REDISMODULE_KEYTYPE_EMPTY)
-        return redis.RedisModule_ReplyWithError.?(ctx, c"ERR key does not exist");
+        return redis.RedisModule_ReplyWithError.?(ctx, "ERR key does not exist");
 
     const keyType = redis.RedisModule_ModuleTypeGetType.?(key);
     return if (keyType == t_ccf.Type8) do_isbroken(t_ccf.Filter8, ctx, key) else if (keyType == t_ccf.Type16) do_isbroken(t_ccf.Filter16, ctx, key) else if (keyType == t_ccf.Type32) do_isbroken(t_ccf.Filter32, ctx, key) else redis.RedisModule_ReplyWithError.?(ctx, redis.REDISMODULE_ERRORMSG_WRONGTYPE);
@@ -410,7 +410,7 @@ export fn CF_ISBROKEN(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModule
 
 inline fn do_isbroken(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, key: ?*redis.RedisModuleKey) c_int {
     const cf = @ptrCast(*CFType, @alignCast(@alignOf(usize), redis.RedisModule_ModuleTypeGetValue.?(key)));
-    return redis.RedisModule_ReplyWithSimpleString.?(ctx, if (cf.cf.is_broken()) c"1" else c"0");
+    return redis.RedisModule_ReplyWithSimpleString.?(ctx, if (cf.cf.is_broken()) "1" else "0");
 }
 
 // CF.CAPACITY size [fpsize]
@@ -428,14 +428,14 @@ export fn CF_CAPACITY(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModule
         fp_size = redis.RedisModule_StringPtrLen.?(argv[2], &fpsize_len)[0..fpsize_len];
     }
 
-    const size = str2size(size_str) catch return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad size");
+    const size = str2size(size_str) catch return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad size");
 
-    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize");
+    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize");
     return switch (fp_size[0]) {
         '1' => redis.RedisModule_ReplyWithLongLong.?(ctx, @intCast(c_longlong, cuckoo.Filter8.capacity(size))),
         '2' => redis.RedisModule_ReplyWithLongLong.?(ctx, @intCast(c_longlong, cuckoo.Filter16.capacity(size))),
         '4' => redis.RedisModule_ReplyWithLongLong.?(ctx, @intCast(c_longlong, cuckoo.Filter32.capacity(size))),
-        else => redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize"),
+        else => redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize"),
     };
 }
 
@@ -447,8 +447,8 @@ export fn CF_SIZEFOR(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     var uni_len: usize = undefined;
     var uni_str = redis.RedisModule_StringPtrLen.?(argv[1], &uni_len);
     const universe = std.fmt.parseInt(usize, uni_str[0..uni_len], 10) catch |err| return switch (err) {
-        error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, c"ERR universe overflows usize"),
-        error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, c"ERR universe contains bad character"),
+        error.Overflow => redis.RedisModule_ReplyWithError.?(ctx, "ERR universe overflows usize"),
+        error.InvalidCharacter => redis.RedisModule_ReplyWithError.?(ctx, "ERR universe contains bad character"),
     };
 
     // Parse fpsize and EXACT
@@ -461,18 +461,18 @@ export fn CF_SIZEFOR(ctx: ?*redis.RedisModuleCtx, argv: [*c]?*redis.RedisModuleS
     }
 
     if (argc == 4) {
-        if (exact) return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize");
+        if (exact) return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize");
         var arg3len: usize = undefined;
         const arg3 = redis.RedisModule_StringPtrLen.?(argv[3], &arg3len)[0..arg3len];
         if (insensitive_eql("EXACT", arg3)) exact = true else return redis.RedisModule_WrongArity.?(ctx);
     }
 
-    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize");
+    if (fp_size.len != 1) return redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize");
     return switch (fp_size[0]) {
         '1' => do_sizefor(cuckoo.Filter8, ctx, universe, exact),
         '2' => do_sizefor(cuckoo.Filter16, ctx, universe, exact),
         '4' => do_sizefor(cuckoo.Filter32, ctx, universe, exact),
-        else => redis.RedisModule_ReplyWithError.?(ctx, c"ERR bad fpsize"),
+        else => redis.RedisModule_ReplyWithError.?(ctx, "ERR bad fpsize"),
     };
 }
 
@@ -480,8 +480,8 @@ fn do_sizefor(comptime CFType: type, ctx: ?*redis.RedisModuleCtx, universe: usiz
     var buf: [5]u8 = undefined;
     const size = if (exact) CFType.size_for_exactly(universe) else CFType.size_for(universe);
     _ = size2str(std.math.max(1024, size), &buf) catch |err| switch (err) {
-        error.TooBig => return redis.RedisModule_ReplyWithError.?(ctx, c"ERR unsupported resulting size (8G max)"),
-        else => return redis.RedisModule_ReplyWithError.?(ctx, c"ERR unexpected error. Please report it at github.com/kristoff-it/redis-cuckoofilter"),
+        error.TooBig => return redis.RedisModule_ReplyWithError.?(ctx, "ERR unsupported resulting size (8G max)"),
+        else => return redis.RedisModule_ReplyWithError.?(ctx, "ERR unexpected error. Please report it at github.com/kristoff-it/redis-cuckoofilter"),
     };
     return redis.RedisModule_ReplyWithSimpleString.?(ctx, @ptrCast([*c]const u8, &buf));
 }
